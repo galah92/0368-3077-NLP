@@ -9,13 +9,13 @@ import os
 
 class Node():
 
-    def __init__(self, _nuclearity='', _relation='', _childs=None, _type='', _span=[0, 0], _text=''):
-        self._nuclearity = _nuclearity
-        self._relation = _relation
-        self._childs = [] if _childs is None else _childs
+    def __init__(self, nuclearity='', relation='', childs=None, _type='', span=[0, 0], text=''):
+        self.nuclearity = nuclearity
+        self.relation = relation
+        self.childs = [] if childs is None else childs
         self._type = _type
-        self._span = _span
-        self._text = _text
+        self.span = span
+        self.text = text
 
 
 class TreeInfo():
@@ -65,8 +65,6 @@ def extract_base_name_file(fn):
     base_name = base_name.split('.')[0]
     return base_name
 
-# lines are the content of .dis" file
-
 
 def build_tree(lines, stack=None):
     if stack is None:
@@ -79,37 +77,38 @@ def build_tree(lines, stack=None):
     m = re.match("\( Root \(span (\d+) (\d+)\)", line)
     if m:
         tokens = m.groups()
+        node.nuclearity = 'Root'
         node._type = "Root"
-        node._span = [int(tokens[0]), int(tokens[1])]
+        node.span = [int(tokens[0]), int(tokens[1])]
         stack.append(node)
-        return build_tree_childs_iter(lines, stack)
+        return build_treechilds_iter(lines, stack)
 
     # ( Nucleus (span 1 34) (rel2par Topic-Drift)
     m = re.match("\( (\w+) \(span (\d+) (\d+)\) \(rel2par ([\w-]+)\)", line)
     if m:
         tokens = m.groups()
-        node._nuclearity = tokens[0]
+        node.nuclearity = tokens[0]
         node._type = "span"
-        node._span = [int(tokens[1]), int(tokens[2])]
-        node._relation = tokens[3]
+        node.span = [int(tokens[1]), int(tokens[2])]
+        node.relation = map_to_cluster(tokens[3])
         stack.append(node)
-        return build_tree_childs_iter(lines, stack)
+        return build_treechilds_iter(lines, stack)
 
     # ( Satellite (leaf 3) (rel2par attribution) (text _!Southern Co. 's Gulf Power Co. unit_!) )
     m = re.match("\( (\w+) \(leaf (\d+)\) \(rel2par ([\w-]+)\) \(text (.+)", line)
     tokens = m.groups()
     node._type = "leaf"
-    node._nuclearity = tokens[0]
-    node._span = [int(tokens[1]), int(tokens[1])] 
-    node._relation = tokens[2]
+    node.nuclearity = tokens[0]
+    node.span = [int(tokens[1]), int(tokens[1])] 
+    node.relation = map_to_cluster(tokens[2])
     text = tokens[3]
     text = text[2:]
     text = text[:-5]
-    node._text = text
+    node.text = text
     return node
 
 
-def build_tree_childs_iter(lines, stack):
+def build_treechilds_iter(lines, stack):
     while True:
         line = lines[-1]
         line.strip()
@@ -117,30 +116,29 @@ def build_tree_childs_iter(lines, stack):
         if words[0] == ")":
             lines.pop(-1)
             break
-
         node = build_tree(lines, stack)
-        stack[-1]._childs.append(node)
+        stack[-1].childs.append(node)
     return stack.pop()
 
 
 def binarize_tree(node):
-    if not node._childs:
+    if not node.childs:
         return
-    if len(node._childs) > 2:
-        stack = deque(node._childs)
+    if len(node.childs) > 2:
+        stack = deque(node.childs)
         while len(stack) > 2:
             right = stack.pop()
             left = stack.pop()
             temp = copy.copy(left)
-            temp._childs = [left, right]
-            temp._span = [left._span[0], right._span[1]]
+            temp.childs = [left, right]
+            temp.span = [left.span[0], right.span[1]]
             temp._type = 'span'
             stack.append(temp)
         right = stack.pop()
         left = stack.pop()
-        node._childs = [left, right]
+        node.childs = [left, right]
     else:
-        left, right = node._childs
+        left, right = node.childs
     binarize_tree(left)
     binarize_tree(right)
 
@@ -149,31 +147,29 @@ def print_serial_files(trees, outdir):
     create_dir(outdir)
     for tree in trees:
         with (outdir / tree._fname).open('w') as ofh:
-            print_serial_file(ofh, tree._root)
+            for node in postorder(tree._root):
+                ofh.write(f'{node.span[0]} {node.span[1]} {node.nuclearity[0]} {node.relation}\n')
 
 
-def print_serial_file(ofh, node, do_map=True):
-    if node._type != "Root":
-        nuc = node._nuclearity
-        if do_map:
-            rel = map_to_cluster(node._relation)
-        else:
-            rel = node._relation
-        beg = node._span[0]
-        end = node._span[1]
-        ofh.write("{} {} {} {}\n".format(beg, end, nuc[0], rel))
+def postorder(node, order=None):
+    if node.nuclearity == 'Root':
+        order = deque()
+    for child in node.childs:
+        postorder(child, order)
+    if node.nuclearity != 'Root':
+        order.append(node)
+    return order
 
-    if node._type != "leaf":
-        l = node._childs[0]
-        r = node._childs[1]
-        print_serial_file(ofh, l, do_map)
-        print_serial_file(ofh, r, do_map)
+
+def print_serial_file(ofh, root):
+    for node in postorder(root):
+        ofh.write(f'{node.span[0]} {node.span[1]} {node.nuclearity[0]} {node.relation}\n')
 
 
 def gen_sentences(trees, infiles_dir):
     for tree in trees:
         fn = tree._fname
-        fn = build_infile_name(tree._fname, infiles_dir, ["out", ""]) 
+        fn = build_infile_name(tree._fname, infiles_dir, ["out", ""])
         with open(fn) as fh:
             content = ''
             lines = fh.readlines()

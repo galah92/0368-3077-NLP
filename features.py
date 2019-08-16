@@ -8,7 +8,7 @@ import random
 
 
 def extract_features(trees, samples, vocab, subset_size, tag_to_ind_map):
-    max_edus = max(tree._root._span[1] for tree in trees)
+    max_edus = max(tree._root.span[1] for tree in trees)
     x_vecs = []
     y_labels = []
     for i in range(subset_size):
@@ -102,7 +102,7 @@ def add_edu_features(features, tree, edus_ind, split_edus, max_edus):
     features['DIST-FROM-START-QUEUE1'] = (edu_ind_in_tree[2] - 1.0) / max_edus
 
     features['DIST-FROM-END-STACK1'] = \
-        (tree._root._span[1] - edu_ind_in_tree[0]) / max_edus
+        (tree._root.span[1] - edu_ind_in_tree[0]) / max_edus
 
     features['DIST-STACK1-QUEUE1'] = \
         (edu_ind_in_tree[2] - edu_ind_in_tree[0]) / max_edus 

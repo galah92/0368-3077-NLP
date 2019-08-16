@@ -1,4 +1,3 @@
-from utils import map_to_cluster
 from relations_inventory import action_to_ind_map
 import copy
 import numpy as np
@@ -19,7 +18,7 @@ def gen_train_data(trees):
         stack = []
         tree_samples = []
         queue = []  # queue of EDUS indices
-        for j in range(tree._root._span[1]):
+        for j in range(tree._root.span[1]):
             queue.append(j + 1)
 
         queue = queue[::-1]
@@ -41,20 +40,19 @@ def gen_train_data_tree(node, stack, queue, samples):
     if node._type == "leaf":
         sample._action = "SHIFT"
         sample._state = gen_state(stack, queue)
-        assert(queue.pop(-1) == node._span[0])
+        assert(queue.pop(-1) == node.span[0])
         stack.append(node)
     else:
-        [l, r] = node._childs
+        [l, r] = node.childs
         gen_train_data_tree(l, stack, queue, samples)
         gen_train_data_tree(r, stack, queue, samples)
-        if r._nuclearity == "Satellite":
+        if r.nuclearity == "Satellite":
             sample._action = gen_action(node, r)
         else:
             sample._action = gen_action(node, l)
-    
         sample._state = gen_state(stack, queue)
-        assert(stack.pop(-1) == node._childs[1])
-        assert(stack.pop(-1) == node._childs[0])
+        assert(stack.pop(-1) == node.childs[1])
+        assert(stack.pop(-1) == node.childs[0])
         stack.append(node)
 
     samples.append(sample)
@@ -63,11 +61,11 @@ def gen_train_data_tree(node, stack, queue, samples):
 def gen_action(parent, child):
     action = "REDUCE-"
     nuc = "NN"
-    if child._nuclearity == "Satellite":
-        nuc = "SN" if parent._childs[0] == child else "NS"
+    if child.nuclearity == "Satellite":
+        nuc = "SN" if parent.childs[0] == child else "NS"
     action += nuc
     action += "-"
-    action += map_to_cluster(child._relation)
+    action += child.relation
     return action
 
 
@@ -88,9 +86,9 @@ def gen_state(stack, queue):
 
 def get_nuclear_edu_ind(node):
     if node._type == "leaf":
-        return node._span[0]
-    l = node._childs[0]
-    r = node._childs[1]
-    if l._nuclearity == "Nucleus":
+        return node.span[0]
+    l = node.childs[0]
+    r = node.childs[1]
+    if l.nuclearity == "Nucleus":
         return get_nuclear_edu_ind(l)
     return get_nuclear_edu_ind(r)

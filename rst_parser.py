@@ -13,19 +13,19 @@ import torch
 class Transition():
 
     def __init__(self):
-        self._nuclearity = []  # <nuc>, <nuc>
-        self._relation = ''  # cluster relation
+        self.nuclearity = []  # <nuc>, <nuc>
+        self.relation = ''  # cluster relation
         self._action = ''  # shift or 'reduce'
 
     def gen_str(self):
         s = self._action
         if s != 'shift':
-            s += '-' + ''.join(x[0] for x in self._nuclearity) + '-' + self._relation
+            s += '-' + ''.join(x[0] for x in self.nuclearity) + '-' + self.relation
         return s.upper()
 
 
 def parse_files(model_name, model, trees, vocab, y_all, tag_to_ind_map, baseline, infiles_dir, gold_files_dir, pred_outdir):
-    max_edus = max(tree._root._span[1] for tree in trees)
+    max_edus = max(tree._root.span[1] for tree in trees)
     path_to_out = create_dir(pred_outdir)
     for tree in trees:
         fn = build_infile_name(tree._fname, infiles_dir, ["out.edus", "edus"])
@@ -42,7 +42,7 @@ def parse_file(queue, stack, model_name, model, tree, vocab, max_edus, y_all, ta
     leaf_ind = 1
     while queue or len(stack) != 1:
         node = Node()
-        node._relation = 'SPAN'
+        node.relation = 'SPAN'
 
         if baseline:
             transition = most_freq_baseline(queue, stack)
@@ -50,31 +50,32 @@ def parse_file(queue, stack, model_name, model, tree, vocab, max_edus, y_all, ta
             transition = predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, y_all, tag_to_ind_map, leaf_ind)
 
         if transition._action == "shift":
-            node = Node(_relation='SPAN',
-                        _text=queue.pop(),
+            node = Node(relation='SPAN',
+                        text=queue.pop(),
                         _type='leaf',
-                        _span=[leaf_ind, leaf_ind])
+                        span=[leaf_ind, leaf_ind])
             leaf_ind += 1
         else:
             r = stack.pop()
             l = stack.pop()
-            node._childs.append(l)
-            node._childs.append(r)
-            l._nuclearity = transition._nuclearity[0]
-            r._nuclearity = transition._nuclearity[1]
-            if l._nuclearity == "Satellite":
-                l._relation = transition._relation
-            elif r._nuclearity == "Satellite":
-                r._relation = transition._relation	
+            node.childs.append(l)
+            node.childs.append(r)
+            l.nuclearity = transition.nuclearity[0]
+            r.nuclearity = transition.nuclearity[1]
+            if l.nuclearity == "Satellite":
+                l.relation = transition.relation
+            elif r.nuclearity == "Satellite":
+                r.relation = transition.relation
             else:
-                l._relation = transition._relation
-                r._relation = transition._relation
+                l.relation = transition.relation
+                r.relation = transition.relation
 
             if (not queue) and (not stack):
                 node._type = "Root"
+                node.nuclearity = 'Root'
             else:
                 node._type = "span"
-            node._span = [l._span[0], r._span[1]]
+            node.span = [l.span[0], r.span[1]]
         stack.append(node)
 
     return stack.pop()
@@ -104,7 +105,7 @@ def predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, y
 
     if action == "SHIFT":
         transition._action = "shift"	
-    else:	 
+    else:
         transition._action = "reduce"
 
         split_action = action.split("-")
@@ -112,15 +113,15 @@ def predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, y
         rel = split_action[2]
 
         if nuc == "NS":
-            transition._nuclearity.append("Nucleus")
-            transition._nuclearity.append("Satellite")
+            transition.nuclearity.append("Nucleus")
+            transition.nuclearity.append("Satellite")
         elif nuc == "SN":
-            transition._nuclearity.append("Satellite")
-            transition._nuclearity.append("Nucleus")
+            transition.nuclearity.append("Satellite")
+            transition.nuclearity.append("Nucleus")
         else:
-            transition._nuclearity.append("Nucleus")
-            transition._nuclearity.append("Nucleus")
-        transition._relation = rel
+            transition.nuclearity.append("Nucleus")
+            transition.nuclearity.append("Nucleus")
+        transition.relation = rel
 
     return transition
 
@@ -147,8 +148,8 @@ def most_freq_baseline(queue, stack):
     if transition._action == "shift":
         return transition
 
-    transition._relation = 'ELABORATION'
-    transition._nuclearity.append("Nucleus")
-    transition._nuclearity.append("Satellite")
+    transition.relation = 'ELABORATION'
+    transition.nuclearity.append("Nucleus")
+    transition.nuclearity.append("Satellite")
 
     return transition
