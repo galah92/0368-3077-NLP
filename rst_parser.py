@@ -1,5 +1,5 @@
 from collections import deque
-from preprocess import Node, print_serial_file, create_dir, build_infile_name
+from preprocess import Node, print_serial_file
 from evaluation import eval as evaluate
 from features import add_features_per_sample
 from train_data import Sample, gen_state
@@ -26,14 +26,13 @@ class Transition():
 
 def parse_files(model_name, model, trees, vocab, y_all, tag_to_ind_map, baseline, infiles_dir, gold_files_dir, pred_outdir):
     max_edus = max(tree._root.span[1] for tree in trees)
-    path_to_out = create_dir(pred_outdir)
+    pred_outdir.mkdir(exist_ok=True)
     for tree in trees:
-        fn = build_infile_name(tree._fname, infiles_dir, ["out.edus", "edus"])
-        with open(fn) as fh:
-            queue = deque(line.strip() for line in fh)
+        tree_file = list(infiles_dir.glob(f'{tree._fname}*.edus'))[0]
+        queue = deque(line.strip() for line in tree_file.open())
         stack = deque()
         root = parse_file(queue, stack, model_name, model, tree, vocab, max_edus, y_all, tag_to_ind_map, baseline)
-        print_serial_file(path_to_out / tree._fname, root)
+        print_serial_file(pred_outdir / tree._fname, root)
     evaluate(gold_files_dir, pred_outdir)
 
 

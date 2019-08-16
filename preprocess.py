@@ -1,10 +1,8 @@
 from utils import map_to_cluster
 from collections import deque
-import shutil
 import copy
 import nltk
 import re
-import os
 
 
 class Node():
@@ -32,11 +30,17 @@ def preprocess(dis_dir, ser_files_dir=''):
     trees = [binarize_file(dis_file) for dis_file in dis_dir.glob('*.dis')]
     if ser_files_dir != '':
         print_serial_files(trees, ser_files_dir)
-    gen_sentences(trees, dis_dir)
     for tree in trees:
+        # populate tree._sents
+        file_path = dis_dir / tree._fname
+        if not file_path.is_file():
+            file_path = file_path.with_suffix('.out')
+        content = ''.join(sent_transform(line) for line in file_path.open('r'))
+        content = content.replace(' \n', ' ').replace('\n', ' ').replace('  ', ' ')
+        tree._sents = [''] + [sent for sent in nltk.tokenize.sent_tokenize(content) if sent.strip() != '']
+        # populate all the rest
         sent_ind = 1
-        fn = build_infile_name(tree._fname, dis_dir, ["out.edus", "edus"])
-        with open(fn) as f:
+        with open(list(dis_dir.glob(f'{tree._fname}*.edus'))[0]) as f:
             for edu in f:
                 edu = edu.strip()
                 edu_tokenized = nltk.tokenize.word_tokenize(edu)
@@ -132,7 +136,7 @@ def binarize_tree(node):
 
 
 def print_serial_files(trees, outdir):
-    create_dir(outdir)
+    outdir.mkdir(exist_ok=True)
     for tree in trees:
         print_serial_file(outdir / tree._fname, tree._root)
 
@@ -153,14 +157,6 @@ def print_serial_file(file_path, root):
                        for node in postorder(root))
 
 
-def gen_sentences(trees, infiles_dir):
-    for tree in trees:
-        fn = build_infile_name(tree._fname, infiles_dir, ["out", ""])
-        content = ''.join(sent_transform(line) for line in open(fn))
-        content = content.replace(' \n', ' ').replace('\n', ' ').replace('  ', ' ')
-        tree._sents = [''] + [sent for sent in nltk.tokenize.sent_tokenize(content) if sent.strip() != '']
-
-
 def sent_transform(string):
     string = string.replace(' . . .', '')
     string = string.replace('Mr.', 'Mr')
@@ -171,27 +167,3 @@ def sent_transform(string):
     string = re.sub('([a-zA-Z])\.([a-zA-Z])\.', r'\1\2', string)
     string = re.sub('([A-Z][a-z]+)\.', r'\1', string)
     return string
-
-
-def build_infile_name(fname, dis_files_dir, suffs):
-    for suf in suffs:
-        fn = build_file_name(fname, dis_files_dir, suf)
-        if os.path.exists(fn):
-            return fn
-    raise Exception("Invalid file path:" + fn)
-
-
-def build_file_name(base_fn, files_dir, suf):
-    fn = files_dir
-    if suf != '':
-        fn = fn / (base_fn + "." + suf)
-    else:
-        fn = fn / base_fn
-    return str(fn)
-
-
-def create_dir(path):
-    if path.exists():
-        shutil.rmtree(str(path))
-    os.makedirs(str(path))
-    return path
