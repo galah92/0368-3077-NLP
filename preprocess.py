@@ -1,12 +1,9 @@
-from nltk import tokenize
-from collections import defaultdict
 from utils import map_to_cluster
-import re
-import copy
-import glob
-import nltk
-import os
 import shutil
+import copy
+import nltk
+import re
+import os
 
 
 class Node():
@@ -41,48 +38,35 @@ class TreeInfo():
         self._edu_word_tag_table = [['']]
 
 
-def preprocess(dis_files_dir, ser_files_dir=''):
-    trees, max_edus = binarize_files(dis_files_dir)
+def preprocess(dis_dir, ser_files_dir=''):
+    trees = [binarize_file(dis_file) for dis_file in dis_dir.glob('*.dis')]
     if ser_files_dir != '':
         print_serial_files(trees, ser_files_dir)
-    gen_sentences(trees, dis_files_dir)
+    gen_sentences(trees, dis_dir)
     for tree in trees:
         sent_ind = 1
-        fn = build_infile_name(tree._fname, dis_files_dir, ["out.edus", "edus"])
+        fn = build_infile_name(tree._fname, dis_dir, ["out.edus", "edus"])
         with open(fn) as f:
             for edu in f:
                 edu = edu.strip()
-                edu_tokenized = tokenize.word_tokenize(edu)
+                edu_tokenized = nltk.tokenize.word_tokenize(edu)
                 tree._edu_word_tag_table.append(nltk.pos_tag(edu_tokenized))
                 tree._EDUS_table.append(edu)
                 if not is_edu_in_sent(edu, tree._sents[sent_ind]):
                     sent_ind += 1
                 tree._edu_to_sent_ind.append(sent_ind)
-    return trees, max_edus
+    return trees
 
 
-def binarize_files(dis_files_dir):
-    trees = []
-    max_edus = 0
-    for fn in glob.glob(str(dis_files_dir / '*.dis')):
-        tree = binarize_file(fn)
-        trees.append(tree)
-        if tree._root._span[1] > max_edus:
-            max_edus = tree._root._span[1]
-    return trees, max_edus
-
-
-def binarize_file(infn):
+def binarize_file(dis_path):
     stack = []
-    with open(infn, "r") as ifh:  # .dis file
+    with dis_path.open('r') as ifh:
         lines = [line.split('//')[0] for line in ifh.readlines()]
         root = build_tree(lines[::-1], stack)
-
     binarize_tree(root)
-
     tree_info = TreeInfo()
     tree_info._root = root
-    tree_info._fname = extract_base_name_file(infn)
+    tree_info._fname = extract_base_name_file(str(dis_path))
     return tree_info
 
 
@@ -215,7 +199,7 @@ def gen_sentences(trees, infiles_dir):
             content = content.replace(' \n', ' ')
             content = content.replace('\n', ' ')
             content = content.replace('  ', ' ')
-            sents = tokenize.sent_tokenize(content)
+            sents = nltk.tokenize.sent_tokenize(content)
             for sent in sents:
                 if sent.strip() == '':
                     continue

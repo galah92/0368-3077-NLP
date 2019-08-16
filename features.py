@@ -7,16 +7,15 @@ from vocabulary import get_tag_ind
 import random
 
 
-def extract_features(trees, samples, vocab, subset_size, max_edus, tag_to_ind_map):
+def extract_features(trees, samples, vocab, subset_size, tag_to_ind_map):
+    max_edus = max(tree._root._span[1] for tree in trees)
     x_vecs = []
     y_labels = []
-
     for i in range(subset_size):
         sample_ind = random.randint(0, len(samples) - 1)
         _, vec_feats = add_features_per_sample(samples[sample_ind], vocab, max_edus, tag_to_ind_map)
         x_vecs.append(vec_feats)
         y_labels.append(action_to_ind_map[samples[sample_ind]._action])
-
     return [x_vecs, y_labels]
 
 

@@ -3,7 +3,7 @@ from preprocess import Node, print_serial_file, create_dir, build_infile_name
 from evaluation import eval as evaluate
 from features import add_features_per_sample
 from train_data import Sample, gen_state
-from model import neural_net_predict, linear_predict
+from models import neural_net_predict, linear_predict
 from relations_inventory import ind_to_action_map
 import numpy as np
 import random
@@ -24,7 +24,8 @@ class Transition():
         return s.upper()
 
 
-def parse_files(model_name, model, trees, vocab, max_edus, y_all, tag_to_ind_map, baseline, infiles_dir, gold_files_dir, pred_outdir):
+def parse_files(model_name, model, trees, vocab, y_all, tag_to_ind_map, baseline, infiles_dir, gold_files_dir, pred_outdir):
+    max_edus = max(tree._root._span[1] for tree in trees)
     path_to_out = create_dir(pred_outdir)
     for tree in trees:
         fn = build_infile_name(tree._fname, infiles_dir, ["out.edus", "edus"])
