@@ -75,13 +75,11 @@ def gen_state(stack, queue):
     ind3 = 0
     if len(queue) > 0:
         ind3 = queue[-1]
-
     if len(stack) > 0:
-        ind1 = get_nuclear_edu_ind(stack[-1]) # right son
+        ind1 = get_nuclear_edu_ind(stack[-1])  # right son
         if len(stack) > 1:
-            ind2 = get_nuclear_edu_ind(stack[-2]) # left son
-
-    return [ind1, ind2, ind3]
+            ind2 = get_nuclear_edu_ind(stack[-2])  # left son
+    return ind1, ind2, ind3
 
 
 def get_nuclear_edu_ind(node):

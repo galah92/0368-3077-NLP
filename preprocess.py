@@ -42,27 +42,20 @@ def preprocess(dis_dir, ser_files_dir=''):
                 edu_tokenized = nltk.tokenize.word_tokenize(edu)
                 tree._edu_word_tag_table.append(nltk.pos_tag(edu_tokenized))
                 tree._EDUS_table.append(edu)
-                if not is_edu_in_sent(edu, tree._sents[sent_ind]):
+                if sent_transform(edu) not in tree._sents[sent_ind]:
                     sent_ind += 1
                 tree._edu_to_sent_ind.append(sent_ind)
     return trees
 
 
 def binarize_file(dis_path):
-    with dis_path.open('r') as dis:
-        lines = [line.split('//')[0] for line in dis.readlines()]
-        root = build_tree(lines[::-1])
+    lines = [line.split('//')[0] for line in dis_path.open('r')]
+    root = build_tree(lines[::-1])
     binarize_tree(root)
     tree_info = TreeInfo()
     tree_info._root = root
-    tree_info._fname = extract_base_name_file(str(dis_path))
+    tree_info._fname = dis_path.stem.split('.')[0]
     return tree_info
-
-
-def extract_base_name_file(fn):
-    base_name = fn.split(os.sep)[-1]
-    base_name = base_name.split('.')[0]
-    return base_name
 
 
 def build_tree(lines, stack=None):
@@ -156,33 +149,16 @@ def postorder(node, order=None):
 
 def print_serial_file(file_path, root):
     with file_path.open('w') as ofh:
-        for node in postorder(root):
-            ofh.write(f'{node.span[0]} {node.span[1]} {node.nuclearity[0]} {node.relation}\n')
+        ofh.writelines(f'{node.span[0]} {node.span[1]} {node.nuclearity[0]} {node.relation}\n'
+                       for node in postorder(root))
 
 
 def gen_sentences(trees, infiles_dir):
     for tree in trees:
-        fn = tree._fname
         fn = build_infile_name(tree._fname, infiles_dir, ["out", ""])
-        with open(fn) as fh:
-            content = ''
-            lines = fh.readlines()
-            for line in lines:
-                line = sent_transform(line)
-                content += line 
-            content = content.replace(' \n', ' ')
-            content = content.replace('\n', ' ')
-            content = content.replace('  ', ' ')
-            sents = nltk.tokenize.sent_tokenize(content)
-            for sent in sents:
-                if sent.strip() == '':
-                    continue
-                tree._sents.append(sent)
-
-
-def is_edu_in_sent(edu, sent):
-    edu1 = sent_transform(edu)
-    return edu1 in sent
+        content = ''.join(sent_transform(line) for line in open(fn))
+        content = content.replace(' \n', ' ').replace('\n', ' ').replace('  ', ' ')
+        tree._sents = [''] + [sent for sent in nltk.tokenize.sent_tokenize(content) if sent.strip() != '']
 
 
 def sent_transform(string):

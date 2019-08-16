@@ -3,7 +3,6 @@ from vocabulary import split_edu_to_tags
 from vocabulary import split_edu_to_tokens
 from vocabulary import DEFAULT_TOKEN
 from vocabulary import get_tag_ind
-
 import random
 
 
@@ -31,8 +30,8 @@ def add_features_per_sample(sample, vocab, max_edus, tag_to_ind_map):
             split_edus.append(split_edu_to_tokens(tree, edu_ind))
             tags_edus.append(split_edu_to_tags(tree, edu_ind))
         else:
-             split_edus.append([''])
-             tags_edus.append([''])
+            split_edus.append([''])
+            tags_edus.append([''])
 
     feat_names.append(['BEG-WORD-STACK1', 'BEG-WORD-STACK2', 'BEG-WORD-QUEUE1'])
     feat_names.append(['SEC-WORD-STACK1', 'SEC-WORD-STACK2', 'SEC-WORD-QUEUE1'])
@@ -84,7 +83,7 @@ def add_tag_features(features, tags_edus, feat_names, tag_loc, tag_to_ind_map):
 def add_edu_features(features, tree, edus_ind, split_edus, max_edus):
     feat_names = ['LEN-STACK1', 'LEN-STACK2', 'LEN-QUEUE1']
 
-    for i in range(0,3):
+    for i in range(0, 3):
         feat = feat_names[i]
         if edus_ind[i] > 0:
             features[feat] = len(split_edus[i]) / max_edus
@@ -93,7 +92,7 @@ def add_edu_features(features, tree, edus_ind, split_edus, max_edus):
 
     edu_ind_in_tree = []
 
-    for i in range(0,3):
+    for i in range(0, 3):
         if edus_ind[i] > 0:
             edu_ind_in_tree.append(edus_ind[i]) 
         else:
@@ -107,8 +106,7 @@ def add_edu_features(features, tree, edus_ind, split_edus, max_edus):
     features['DIST-STACK1-QUEUE1'] = \
         (edu_ind_in_tree[2] - edu_ind_in_tree[0]) / max_edus 
 
-    same_sent = tree._edu_to_sent_ind[edus_ind[0]] == \
-        tree._edu_to_sent_ind[edus_ind[2]]
+    same_sent = tree._edu_to_sent_ind[edus_ind[0]] == tree._edu_to_sent_ind[edus_ind[2]]
 
     features['SAME-SENT-STACK1-QUEUE1'] = 1 if same_sent else 0
 
@@ -117,7 +115,6 @@ def gen_vectorized_features(features, vocab, tag_to_ind_map):
     vecs = []
     n_tags = len(tag_to_ind_map) - 1
     for key, val in features.items():
-        # print("key {} val {}".format(key, val))
         if 'WORD' in key:
             word_ind = vocab.tokens.get(val.lower(), vocab.tokens[DEFAULT_TOKEN])
             vecs += [elem for elem in vocab.words[word_ind]]
@@ -125,5 +122,4 @@ def gen_vectorized_features(features, vocab, tag_to_ind_map):
             vecs += [get_tag_ind(tag_to_ind_map, val) / n_tags]
         else:
             vecs += [val]
-        # print(len(vecs))
     return vecs
