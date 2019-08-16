@@ -1,4 +1,5 @@
 from utils import map_to_cluster
+from collections import deque
 import shutil
 import copy
 import nltk
@@ -59,10 +60,9 @@ def preprocess(dis_dir, ser_files_dir=''):
 
 
 def binarize_file(dis_path):
-    stack = []
-    with dis_path.open('r') as ifh:
-        lines = [line.split('//')[0] for line in ifh.readlines()]
-        root = build_tree(lines[::-1], stack)
+    with dis_path.open('r') as dis:
+        lines = [line.split('//')[0] for line in dis.readlines()]
+        root = build_tree(lines[::-1])
     binarize_tree(root)
     tree_info = TreeInfo()
     tree_info._root = root
@@ -78,7 +78,9 @@ def extract_base_name_file(fn):
 # lines are the content of .dis" file
 
 
-def build_tree(lines, stack):
+def build_tree(lines, stack=None):
+    if stack is None:
+        stack = deque()
     line = lines.pop(-1)
     line = line.strip()
     node = Node()
@@ -128,37 +130,31 @@ def build_tree_childs_iter(lines, stack):
 
         node = build_tree(lines, stack)
         stack[-1]._childs.append(node)
-    return stack.pop(-1)
+    return stack.pop()
 
 
 def binarize_tree(node):
     if not node._childs:
         return
-
     if len(node._childs) > 2:
-        stack = []
-        for child in node._childs:
-            stack.append(child)
-
+        stack = deque(node._childs)
         node._childs = []
         while len(stack) > 2:
-            r = stack.pop(-1)
-            l = stack.pop(-1)
-
-            t = l.copy()
-            t._childs = [l, r]
-            t._span = [l._span[0], r._span[1]]
+            right = stack.pop()
+            left = stack.pop()
+            t = left.copy()
+            t._childs = [left, right]
+            t._span = [left._span[0], right._span[1]]
             t._type = "span"
             stack.append(t)
-        r = stack.pop(-1)
-        l = stack.pop(-1)
-        node._childs = [l, r]
+        right = stack.pop()
+        left = stack.pop()
+        node._childs = [left, right]
     else:
-        l = node._childs[0]
-        r = node._childs[1]
-
-    binarize_tree(l)
-    binarize_tree(r)
+        left = node._childs[0]
+        right = node._childs[1]
+    binarize_tree(left)
+    binarize_tree(right)
 
 
 def print_serial_files(trees, outdir):
