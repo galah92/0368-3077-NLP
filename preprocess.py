@@ -17,16 +17,6 @@ class Node():
         self._span = _span
         self._text = _text
 
-    def copy(self):
-        to = Node()
-        to._nuclearity = self._nuclearity
-        to._relation = self._relation
-        to._childs = copy.copy(self._childs)
-        to._span = copy.copy(self._span)
-        to._text = self._text
-        to._type = self._type
-        return to
-
 
 class TreeInfo():
 
@@ -138,21 +128,19 @@ def binarize_tree(node):
         return
     if len(node._childs) > 2:
         stack = deque(node._childs)
-        node._childs = []
         while len(stack) > 2:
             right = stack.pop()
             left = stack.pop()
-            t = left.copy()
-            t._childs = [left, right]
-            t._span = [left._span[0], right._span[1]]
-            t._type = "span"
-            stack.append(t)
+            temp = copy.copy(left)
+            temp._childs = [left, right]
+            temp._span = [left._span[0], right._span[1]]
+            temp._type = 'span'
+            stack.append(temp)
         right = stack.pop()
         left = stack.pop()
         node._childs = [left, right]
     else:
-        left = node._childs[0]
-        right = node._childs[1]
+        left, right = node._childs
     binarize_tree(left)
     binarize_tree(right)
 
