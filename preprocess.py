@@ -41,8 +41,8 @@ class TreeInfo():
         self._edu_word_tag_table = [['']]
 
 
-def preprocess(dis_files_dir, ser_files_dir='', bin_files_dir=''):
-    trees, max_edus = binarize_files(dis_files_dir, bin_files_dir)
+def preprocess(dis_files_dir, ser_files_dir=''):
+    trees, max_edus = binarize_files(dis_files_dir)
     if ser_files_dir != '':
         print_serial_files(trees, ser_files_dir)
     gen_sentences(trees, dis_files_dir)
@@ -61,34 +61,24 @@ def preprocess(dis_files_dir, ser_files_dir='', bin_files_dir=''):
     return trees, max_edus
 
 
-def binarize_files(dis_files_dir, bin_files_dir):
+def binarize_files(dis_files_dir):
     trees = []
     max_edus = 0
     for fn in glob.glob(str(dis_files_dir / '*.dis')):
-        tree = binarize_file(fn, bin_files_dir)
+        tree = binarize_file(fn)
         trees.append(tree)
         if tree._root._span[1] > max_edus:
             max_edus = tree._root._span[1]
     return trees, max_edus
 
 
-def binarize_file(infn, bin_files_dir):
+def binarize_file(infn):
     stack = []
     with open(infn, "r") as ifh:  # .dis file
         lines = [line.split('//')[0] for line in ifh.readlines()]
         root = build_tree(lines[::-1], stack)
 
     binarize_tree(root)
-
-    if bin_files_dir != '':
-        outfn = infn.split(os.sep)[0]
-        outfn += os.sep
-        outfn += bin_files_dir
-        outfn += os.sep
-        outfn += extract_base_name_file(infn)
-        outfn += ".out.dis"
-        with open(outfn, "w") as ofh:
-            print_dis_file(ofh, root, 0)
 
     tree_info = TreeInfo()
     tree_info._root = root
@@ -187,38 +177,6 @@ def binarize_tree(node):
     binarize_tree(r)
 
 
-def print_dis_file(ofh, node, level):
-    nuc = node._nuclearity
-    rel = node._relation
-    beg = node._span[0]
-    end = node._span[1]
-    if node._type == "leaf":
-        # Nucleus (leaf 1) (rel2par span) (text _!Wall Street is just about ready to line_!) )
-        print_spaces(ofh, level)
-        text = node._text
-        ofh.write("( {} (leaf {}) (rel2par {}) (text _!{}_!) )\n".format(nuc, beg, rel, text))
-    else:
-        if node._type == "Root":
-            # ( Root (span 1 91)
-            ofh.write("( Root (span {} {})\n".format(beg, end))
-        else:
-            # ( Nucleus (span 1 69) (rel2par Contrast)
-            print_spaces(ofh, level)
-            ofh.write("( {} (span {} {}) (rel2par {})\n".format(nuc, beg, end, rel))
-        l = node._childs[0]
-        r = node._childs[1]
-        print_dis_file(ofh, l, level + 1)
-        print_dis_file(ofh, r, level + 1)
-        print_spaces(ofh, level)
-        ofh.write(")\n")
-
-
-def print_spaces(ofh, level):
-    n_spaces = 2 * level
-    for i in range(n_spaces):
-        ofh.write(" ")
-
-
 def print_serial_files(trees, outdir):
     create_dir(outdir)
     for tree in trees:
@@ -242,39 +200,6 @@ def print_serial_file(ofh, node, do_map=True):
         r = node._childs[1]
         print_serial_file(ofh, l, do_map)
         print_serial_file(ofh, r, do_map)
-
-
-def print_trees_stats(trees):
-    rel_freq = defaultdict(int)
-
-    for tree in trees:
-        gen_tree_stats(tree._root, rel_freq)
-
-    total = 0
-    for _, v in rel_freq.items():
-        total += v
-
-    for k, v in rel_freq.items():
-        rel_freq[k] = v / total
-
-    rel_freq_list = [(k,v) for k, v in rel_freq.items()]
-
-    rel_freq_list = sorted(rel_freq_list, key=lambda elem: elem[1])
-    rel_freq_list = rel_freq_list[::-1]
-    print("most frequent relations: {}".format(rel_freq_list[0:5]))
-
-
-def gen_tree_stats(node, rel_freq):
-    if node._type != "Root":
-        nuc = node._nuclearity
-        rel = map_to_cluster(node._relation)
-        rel_freq[rel] += 1
-
-    if node._type != "leaf":
-        l = node._childs[0]
-        r = node._childs[1]
-        gen_tree_stats(l, rel_freq)
-        gen_tree_stats(r, rel_freq)
 
 
 def gen_sentences(trees, infiles_dir):
