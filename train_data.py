@@ -37,13 +37,13 @@ def gen_train_data(trees):
 
 def gen_train_data_tree(node, stack, queue, samples):
     sample = Sample()
-    if node._type == "leaf":
+    if not node.childs:
         sample._action = "SHIFT"
         sample._state = gen_state(stack, queue)
         assert(queue.pop(-1) == node.span[0])
         stack.append(node)
     else:
-        [l, r] = node.childs
+        l, r = node.childs
         gen_train_data_tree(l, stack, queue, samples)
         gen_train_data_tree(r, stack, queue, samples)
         if r.nuclearity == "Satellite":
@@ -85,10 +85,10 @@ def gen_state(stack, queue):
 
 
 def get_nuclear_edu_ind(node):
-    if node._type == "leaf":
+    if not node.childs:
         return node.span[0]
-    l = node.childs[0]
-    r = node.childs[1]
-    if l.nuclearity == "Nucleus":
-        return get_nuclear_edu_ind(l)
-    return get_nuclear_edu_ind(r)
+    left = node.childs[0]
+    right = node.childs[1]
+    if left.nuclearity == "Nucleus":
+        return get_nuclear_edu_ind(left)
+    return get_nuclear_edu_ind(right)

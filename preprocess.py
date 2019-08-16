@@ -9,11 +9,10 @@ import os
 
 class Node():
 
-    def __init__(self, nuclearity='', relation='', childs=None, _type='', span=[0, 0], text=''):
+    def __init__(self, nuclearity='', relation='', childs=None, span=[0, 0], text=''):
         self.nuclearity = nuclearity
         self.relation = relation
         self.childs = [] if childs is None else childs
-        self._type = _type
         self.span = span
         self.text = text
 
@@ -78,7 +77,6 @@ def build_tree(lines, stack=None):
     if m:
         tokens = m.groups()
         node.nuclearity = 'Root'
-        node._type = "Root"
         node.span = [int(tokens[0]), int(tokens[1])]
         stack.append(node)
         return build_treechilds_iter(lines, stack)
@@ -88,7 +86,6 @@ def build_tree(lines, stack=None):
     if m:
         tokens = m.groups()
         node.nuclearity = tokens[0]
-        node._type = "span"
         node.span = [int(tokens[1]), int(tokens[2])]
         node.relation = map_to_cluster(tokens[3])
         stack.append(node)
@@ -97,7 +94,6 @@ def build_tree(lines, stack=None):
     # ( Satellite (leaf 3) (rel2par attribution) (text _!Southern Co. 's Gulf Power Co. unit_!) )
     m = re.match("\( (\w+) \(leaf (\d+)\) \(rel2par ([\w-]+)\) \(text (.+)", line)
     tokens = m.groups()
-    node._type = "leaf"
     node.nuclearity = tokens[0]
     node.span = [int(tokens[1]), int(tokens[1])] 
     node.relation = map_to_cluster(tokens[2])
@@ -132,7 +128,6 @@ def binarize_tree(node):
             temp = copy.copy(left)
             temp.childs = [left, right]
             temp.span = [left.span[0], right.span[1]]
-            temp._type = 'span'
             stack.append(temp)
         right = stack.pop()
         left = stack.pop()
@@ -146,9 +141,7 @@ def binarize_tree(node):
 def print_serial_files(trees, outdir):
     create_dir(outdir)
     for tree in trees:
-        with (outdir / tree._fname).open('w') as ofh:
-            for node in postorder(tree._root):
-                ofh.write(f'{node.span[0]} {node.span[1]} {node.nuclearity[0]} {node.relation}\n')
+        print_serial_file(outdir / tree._fname, tree._root)
 
 
 def postorder(node, order=None):
@@ -161,9 +154,10 @@ def postorder(node, order=None):
     return order
 
 
-def print_serial_file(ofh, root):
-    for node in postorder(root):
-        ofh.write(f'{node.span[0]} {node.span[1]} {node.nuclearity[0]} {node.relation}\n')
+def print_serial_file(file_path, root):
+    with file_path.open('w') as ofh:
+        for node in postorder(root):
+            ofh.write(f'{node.span[0]} {node.span[1]} {node.nuclearity[0]} {node.relation}\n')
 
 
 def gen_sentences(trees, infiles_dir):

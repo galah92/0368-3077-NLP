@@ -33,8 +33,7 @@ def parse_files(model_name, model, trees, vocab, y_all, tag_to_ind_map, baseline
             queue = deque(line.strip() for line in fh)
         stack = deque()
         root = parse_file(queue, stack, model_name, model, tree, vocab, max_edus, y_all, tag_to_ind_map, baseline)
-        with (path_to_out / tree._fname).open('w') as ofh:
-            print_serial_file(ofh, root, False)
+        print_serial_file(path_to_out / tree._fname, root)
     evaluate(gold_files_dir, pred_outdir)
 
 
@@ -52,7 +51,6 @@ def parse_file(queue, stack, model_name, model, tree, vocab, max_edus, y_all, ta
         if transition._action == "shift":
             node = Node(relation='SPAN',
                         text=queue.pop(),
-                        _type='leaf',
                         span=[leaf_ind, leaf_ind])
             leaf_ind += 1
         else:
@@ -70,11 +68,8 @@ def parse_file(queue, stack, model_name, model, tree, vocab, max_edus, y_all, ta
                 l.relation = transition.relation
                 r.relation = transition.relation
 
-            if (not queue) and (not stack):
-                node._type = "Root"
+            if not queue and not stack:
                 node.nuclearity = 'Root'
-            else:
-                node._type = "span"
             node.span = [l.span[0], r.span[1]]
         stack.append(node)
 
