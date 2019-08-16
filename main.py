@@ -1,4 +1,4 @@
-from preprocess import preprocess
+from preprocess import load_trees
 from train_data import gen_train_data
 from rst_parser import parse_files
 from vocabulary import gen_vocabulary
@@ -19,7 +19,7 @@ if __name__ == '__main__':
     baseline = False
 
     print('preprocessing..')
-    trees = preprocess(TRAINING_DIR)
+    trees = load_trees(TRAINING_DIR)
     vocab, tag_to_ind_map = gen_vocabulary(trees)
 
     if not baseline:
@@ -39,7 +39,7 @@ if __name__ == '__main__':
                                                    tag_to_ind_map)
 
     print('evaluate..')
-    dev_trees = preprocess(DEV_TEST_DIR, DEV_TEST_GOLD_DIR)
+    dev_trees = load_trees(DEV_TEST_DIR, DEV_TEST_GOLD_DIR)
     parse_files(model_name,
                 model,
                 dev_trees,

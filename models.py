@@ -1,11 +1,11 @@
 from sklearn import linear_model
+from torch.autograd import Variable
+from features import extract_features
+from relations_inventory import ind_toaction_map
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torch.autograd import Variable
-from features import extract_features
-from relations_inventory import ind_to_action_map
 
 
 hidden_size = 128
@@ -27,7 +27,7 @@ class Network(nn.Module):
 
 def neural_network_model(trees, samples, vocab, tag_to_ind_map, iterations=200, subset_size=5000):
 
-    num_classes = len(ind_to_action_map)
+    num_classes = len(ind_toaction_map)
 
     [x_vecs, _] = extract_features(trees, samples, vocab, 1, tag_to_ind_map)
 

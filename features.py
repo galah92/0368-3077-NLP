@@ -14,7 +14,7 @@ def extract_features(trees, samples, vocab, subset_size, tag_to_ind_map):
         sample_ind = random.randint(0, len(samples) - 1)
         _, vec_feats = add_features_per_sample(samples[sample_ind], vocab, max_edus, tag_to_ind_map)
         x_vecs.append(vec_feats)
-        y_labels.append(action_to_ind_map[samples[sample_ind]._action])
+        y_labels.append(action_to_ind_map[samples[sample_ind].action])
     return [x_vecs, y_labels]
 
 
@@ -23,9 +23,9 @@ def add_features_per_sample(sample, vocab, max_edus, tag_to_ind_map):
     feat_names = []
     split_edus = []
     tags_edus = []
-    tree = sample._tree
-    for i in range(len(sample._state)):
-        edu_ind = sample._state[i]
+    tree = sample.tree
+    for i in range(len(sample.state)):
+        edu_ind = sample.state[i]
         if edu_ind > 0:
             split_edus.append(split_edu_to_tokens(tree, edu_ind))
             tags_edus.append(split_edu_to_tags(tree, edu_ind))
@@ -53,7 +53,7 @@ def add_features_per_sample(sample, vocab, max_edus, tag_to_ind_map):
     feat_names = ['END-TAG-STACK1', 'END-TAG-STACK2', 'END-TAG-QUEUE1']
     add_tag_features(features, tags_edus, feat_names, -1, tag_to_ind_map)
 
-    add_edu_features(features, tree, sample._state, split_edus, max_edus)
+    add_edu_features(features, tree, sample.state, split_edus, max_edus)
 
     vecs = gen_vectorized_features(features, vocab, tag_to_ind_map)
     return features, vecs

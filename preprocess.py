@@ -26,7 +26,7 @@ class TreeInfo():
         self._edu_word_tag_table = [['']]
 
 
-def preprocess(dis_dir, ser_files_dir=''):
+def load_trees(dis_dir, ser_files_dir=''):
     trees = [binarize_file(dis_file) for dis_file in dis_dir.glob('*.dis')]
     if ser_files_dir != '':
         print_serial_files(trees, ser_files_dir)

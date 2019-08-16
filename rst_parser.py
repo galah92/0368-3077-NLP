@@ -2,9 +2,9 @@ from collections import deque
 from preprocess import Node, print_serial_file
 from evaluation import eval as evaluate
 from features import add_features_per_sample
-from train_data import Sample, gen_state
+from train_data import Sample, genstate
 from models import neural_net_predict, linear_predict
-from relations_inventory import ind_to_action_map
+from relations_inventory import ind_toaction_map
 import numpy as np
 import random
 import torch
@@ -15,10 +15,10 @@ class Transition():
     def __init__(self):
         self.nuclearity = []  # <nuc>, <nuc>
         self.relation = ''  # cluster relation
-        self._action = ''  # shift or 'reduce'
+        self.action = ''  # shift or 'reduce'
 
     def gen_str(self):
-        s = self._action
+        s = self.action
         if s != 'shift':
             s += '-' + ''.join(x[0] for x in self.nuclearity) + '-' + self.relation
         return s.upper()
@@ -47,7 +47,7 @@ def parse_file(queue, stack, model_name, model, tree, vocab, max_edus, y_all, ta
         else:
             transition = predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, y_all, tag_to_ind_map, leaf_ind)
 
-        if transition._action == "shift":
+        if transition.action == "shift":
             node = Node(relation='SPAN',
                         text=queue.pop(),
                         span=[leaf_ind, leaf_ind])
@@ -78,33 +78,33 @@ def parse_file(queue, stack, model_name, model, tree, vocab, max_edus, y_all, ta
 def predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, y_all, tag_to_ind_map, top_ind_in_queue):
     transition = Transition()
     sample = Sample()
-    sample._state = gen_config(queue, stack, top_ind_in_queue)
-    sample._tree = tree
+    sample.state = gen_config(queue, stack, top_ind_in_queue)
+    sample.tree = tree
     _, x_vecs = add_features_per_sample(sample, vocab, max_edus, tag_to_ind_map)
 
     if model_name == "neural":
         pred = neural_net_predict(model, x_vecs)
-        action = ind_to_action_map[pred.argmax()]
+        action = ind_toaction_map[pred.argmax()]
         _, indices = torch.sort(pred)
     else:
         pred = linear_predict(model, [x_vecs])
-        action = ind_to_action_map[y_all[np.argmax(pred)]]
+        action = ind_toaction_map[y_all[np.argmax(pred)]]
         indices = np.argsort(pred)	
 
     # correct invalid action
     if len(stack) < 2 and action != "SHIFT":
         action = "SHIFT"
     elif (not queue) and action == "SHIFT":
-        action = ind_to_action_map[indices[-2]]
+        action = ind_toaction_map[indices[-2]]
 
     if action == "SHIFT":
-        transition._action = "shift"	
+        transition.action = "shift"	
     else:
-        transition._action = "reduce"
+        transition.action = "reduce"
 
-        split_action = action.split("-")
-        nuc = split_action[1]
-        rel = split_action[2]
+        splitaction = action.split("-")
+        nuc = splitaction[1]
+        rel = splitaction[2]
 
         if nuc == "NS":
             transition.nuclearity.append("Nucleus")
@@ -124,22 +124,22 @@ def gen_config(queue, stack, top_ind_in_queue):
     q_temp = []
     if queue:
         q_temp.append(top_ind_in_queue)
-    return gen_state(stack, q_temp)
+    return genstate(stack, q_temp)
 
 
 def most_freq_baseline(queue, stack):
     transition = Transition()
 
     if len(stack) < 2:
-        transition._action = "shift"
+        transition.action = "shift"
     elif queue:
         actions = ["shift", "reduce"]
         ind = random.randint(0, 1)
-        transition._action = actions[ind]
+        transition.action = actions[ind]
     else:
-        transition._action = "reduce"
+        transition.action = "reduce"
 
-    if transition._action == "shift":
+    if transition.action == "shift":
         return transition
 
     transition.relation = 'ELABORATION'
