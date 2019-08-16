@@ -9,11 +9,6 @@ import os
 import shutil
 
 
-# debugging
-print_sents = True
-sents_dir = 'sents'
-
-
 class Node():
 
     def __init__(self, _nuclearity='', _relation='', _childs=None, _type='', _span=[0, 0], _text=''):
@@ -46,14 +41,14 @@ class TreeInfo():
         self._edu_word_tag_table = [['']]
 
 
-def preprocess(path, dis_files_dir, ser_files_dir='', bin_files_dir=''):
-    trees, max_edus = binarize_files(path, dis_files_dir, bin_files_dir)
+def preprocess(dis_files_dir, ser_files_dir='', bin_files_dir=''):
+    trees, max_edus = binarize_files(dis_files_dir, bin_files_dir)
     if ser_files_dir != '':
-        print_serial_files(path, trees, ser_files_dir)
-    gen_sentences(trees, path, dis_files_dir)
+        print_serial_files(trees, ser_files_dir)
+    gen_sentences(trees, dis_files_dir)
     for tree in trees:
         sent_ind = 1
-        fn = build_infile_name(tree._fname, path, dis_files_dir, ["out.edus", "edus"])
+        fn = build_infile_name(tree._fname, dis_files_dir, ["out.edus", "edus"])
         with open(fn) as f:
             for edu in f:
                 edu = edu.strip()
@@ -66,14 +61,10 @@ def preprocess(path, dis_files_dir, ser_files_dir='', bin_files_dir=''):
     return trees, max_edus
 
 
-def binarize_files(base_path, dis_files_dir, bin_files_dir):
+def binarize_files(dis_files_dir, bin_files_dir):
     trees = []
     max_edus = 0
-    path = base_path / dis_files_dir
-    assert os.path.isdir(path), "Path to dataset does not exist: " + dis_files_dir
-
-    path = path / "*.dis"
-    for fn in glob.glob(str(path)):
+    for fn in glob.glob(str(dis_files_dir / '*.dis')):
         tree = binarize_file(fn, bin_files_dir)
         trees.append(tree)
         if tree._root._span[1] > max_edus:
@@ -221,31 +212,28 @@ def print_dis_file(ofh, node, level):
         l = node._childs[0]
         r = node._childs[1]
         print_dis_file(ofh, l, level + 1)
-        print_dis_file(ofh, r, level + 1) 
+        print_dis_file(ofh, r, level + 1)
         print_spaces(ofh, level)
         ofh.write(")\n")
+
 
 def print_spaces(ofh, level):
     n_spaces = 2 * level
     for i in range(n_spaces):
         ofh.write(" ")
 
-# print serial tree files
 
-def print_serial_files(base_path, trees, outdir):
-    path = create_dir(base_path, outdir)
-
+def print_serial_files(trees, outdir):
+    create_dir(outdir)
     for tree in trees:
-        outfn = path
-        outfn += os.sep
-        outfn += tree._fname
-        with open(outfn, "w") as ofh:
+        with (outdir / tree._fname).open('w') as ofh:
             print_serial_file(ofh, tree._root)
 
-def print_serial_file(ofh, node, doMap=True):
+
+def print_serial_file(ofh, node, do_map=True):
     if node._type != "Root":
         nuc = node._nuclearity
-        if doMap == True:
+        if do_map:
             rel = map_to_cluster(node._relation)
         else:
             rel = node._relation
@@ -256,8 +244,9 @@ def print_serial_file(ofh, node, doMap=True):
     if node._type != "leaf":
         l = node._childs[0]
         r = node._childs[1]
-        print_serial_file(ofh, l, doMap)
-        print_serial_file(ofh, r, doMap)
+        print_serial_file(ofh, l, do_map)
+        print_serial_file(ofh, r, do_map)
+
 
 def print_trees_stats(trees):
     rel_freq = defaultdict(int)
@@ -278,6 +267,7 @@ def print_trees_stats(trees):
     rel_freq_list = rel_freq_list[::-1]
     print("most frequent relations: {}".format(rel_freq_list[0:5]))
 
+
 def gen_tree_stats(node, rel_freq):
     if node._type != "Root":
         nuc = node._nuclearity
@@ -290,14 +280,11 @@ def gen_tree_stats(node, rel_freq):
         gen_tree_stats(l, rel_freq)
         gen_tree_stats(r, rel_freq)
 
-def gen_sentences(trees, base_path, infiles_dir):
-    if print_sents:
-        if not os.path.isdir(sents_dir):
-               os.makedirs(sents_dir)
 
+def gen_sentences(trees, infiles_dir):
     for tree in trees:
         fn = tree._fname
-        fn = build_infile_name(tree._fname, base_path, infiles_dir, ["out", ""]) 
+        fn = build_infile_name(tree._fname, infiles_dir, ["out", ""]) 
         with open(fn) as fh:
             content = ''
             lines = fh.readlines()
@@ -312,12 +299,6 @@ def gen_sentences(trees, base_path, infiles_dir):
                 if sent.strip() == '':
                     continue
                 tree._sents.append(sent)
-
-        if print_sents:
-            fn_sents = build_file_name(tree._fname, base_path, sents_dir, "out.sents")
-            with open(fn_sents, "w") as ofh:
-                for sent in tree._sents[1:]:
-                    ofh.write("{}\n".format(sent))
 
 
 def is_edu_in_sent(edu, sent):
@@ -337,16 +318,16 @@ def sent_transform(string):
     return string
 
 
-def build_infile_name(fname, base_path, dis_files_dir, suffs):
+def build_infile_name(fname, dis_files_dir, suffs):
     for suf in suffs:
-        fn = build_file_name(fname, base_path, dis_files_dir, suf)
+        fn = build_file_name(fname, dis_files_dir, suf)
         if os.path.exists(fn):
             return fn
     raise Exception("Invalid file path:" + fn)
 
 
-def build_file_name(base_fn, base_path, files_dir, suf):
-    fn = base_path / files_dir
+def build_file_name(base_fn, files_dir, suf):
+    fn = files_dir
     if suf != '':
         fn = fn / (base_fn + "." + suf)
     else:
@@ -354,10 +335,8 @@ def build_file_name(base_fn, base_path, files_dir, suf):
     return str(fn)
 
 
-def create_dir(base_path, outdir):
-    path = base_path / outdir
+def create_dir(path):
     if path.exists():
-        shutil.rmtree(str(base_path / outdir))
-    path = str(path)
-    os.makedirs(path)
+        shutil.rmtree(str(path))
+    os.makedirs(str(path))
     return path

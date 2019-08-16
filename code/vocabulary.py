@@ -2,6 +2,10 @@ from glove import get_word_vectors
 import nltk
 
 
+nltk.download('punkt', quiet=True)
+nltk.download('averaged_perceptron_tagger', quiet=True)
+
+
 DEFAULT_TOKEN = ''
 
 

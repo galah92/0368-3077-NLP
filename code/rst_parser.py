@@ -1,5 +1,5 @@
 from collections import deque
-from preprocess import Node, print_serial_file, extract_base_name_file, create_dir, build_infile_name
+from preprocess import Node, print_serial_file, create_dir, build_infile_name
 from evaluation import eval as evaluate
 from features import add_features_per_sample
 from train_data import Sample, gen_state
@@ -8,15 +8,14 @@ from relations_inventory import ind_to_action_map
 import numpy as np
 import random
 import torch
-import os
 
 
 class Transition():
 
     def __init__(self):
-        self._nuclearity = [] # <nuc>, <nuc>
-        self._relation = '' # cluster relation
-        self._action = '' # shift or 'reduce'
+        self._nuclearity = []  # <nuc>, <nuc>
+        self._relation = ''  # cluster relation
+        self._action = ''  # shift or 'reduce'
 
     def gen_str(self):
         s = self._action
@@ -25,21 +24,17 @@ class Transition():
         return s.upper()
 
 
-def parse_files(base_path, model_name, model, trees, vocab, max_edus, y_all, tag_to_ind_map, baseline, infiles_dir, gold_files_dir, pred_outdir="pred"):
-    path_to_out = create_dir(base_path, pred_outdir)
-
-    for tree in trees: 
-        fn = build_infile_name(tree._fname, base_path, infiles_dir, ["out.edus", "edus"])
+def parse_files(model_name, model, trees, vocab, max_edus, y_all, tag_to_ind_map, baseline, infiles_dir, gold_files_dir, pred_outdir):
+    path_to_out = create_dir(pred_outdir)
+    for tree in trees:
+        fn = build_infile_name(tree._fname, infiles_dir, ["out.edus", "edus"])
         with open(fn) as fh:
             queue = deque(line.strip() for line in fh)
         stack = deque()
         root = parse_file(queue, stack, model_name, model, tree, vocab, max_edus, y_all, tag_to_ind_map, baseline)
-        predfn = path_to_out
-        predfn += os.sep
-        predfn += tree._fname
-        with open(predfn, "w") as ofh:
+        with (path_to_out / tree._fname).open('w') as ofh:
             print_serial_file(ofh, root, False)
-    evaluate(gold_files_dir, "pred")
+    evaluate(gold_files_dir, pred_outdir)
 
 
 def parse_file(queue, stack, model_name, model, tree, vocab, max_edus, y_all, tag_to_ind_map, baseline):
@@ -143,11 +138,11 @@ def most_freq_baseline(queue, stack):
         transition._action = "shift"
     elif queue:
         actions = ["shift", "reduce"]
-        ind = random.randint(0,1)
+        ind = random.randint(0, 1)
         transition._action = actions[ind]
     else:
         transition._action = "reduce"
-        
+
     if transition._action == "shift":
         return transition
 
