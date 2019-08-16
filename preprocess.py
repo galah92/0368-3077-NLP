@@ -74,8 +74,8 @@ def binarize_files(dis_files_dir, bin_files_dir):
 
 def binarize_file(infn, bin_files_dir):
     stack = []
-    with open(infn, "r") as ifh: # .dis file
-        lines = ifh.readlines()
+    with open(infn, "r") as ifh:  # .dis file
+        lines = [line.split('//')[0] for line in ifh.readlines()]
         root = build_tree(lines[::-1], stack)
 
     binarize_tree(root)
@@ -107,9 +107,6 @@ def extract_base_name_file(fn):
 def build_tree(lines, stack):
     line = lines.pop(-1)
     line = line.strip()
-
-    # print("{}".format(line))
- 
     node = Node()
 
     # ( Root (span 1 54)
@@ -122,7 +119,6 @@ def build_tree(lines, stack):
         return build_tree_childs_iter(lines, stack)
 
     # ( Nucleus (span 1 34) (rel2par Topic-Drift)
-    line.replace("\\TT_ERR", '')
     m = re.match("\( (\w+) \(span (\d+) (\d+)\) \(rel2par ([\w-]+)\)", line)
     if m:
         tokens = m.groups()
@@ -145,7 +141,7 @@ def build_tree(lines, stack):
     text = text[:-5]
     node._text = text
     return node
-    
+
 
 def build_tree_childs_iter(lines, stack):
     while True:

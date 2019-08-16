@@ -6,7 +6,7 @@ from model import mini_batch_linear_model, neural_network_model
 from pathlib import Path
 
 
-DATASET_PATH = Path('dataset')
+DATASET_PATH = Path('data')
 TRAINING_DIR = DATASET_PATH / 'TRAINING'
 DEV_TEST_DIR = DATASET_PATH / 'DEV'
 DEV_TEST_GOLD_DIR = DATASET_PATH / 'dev_gold'
