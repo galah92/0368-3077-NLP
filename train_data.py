@@ -16,17 +16,13 @@ def gen_train_data(trees):
         root = tree._root
         stack = []
         tree_samples = []
-        queue = []  # queue of EDUS indices
-        for j in range(tree._root.span[1]):
-            queue.append(j + 1)
-        queue = queue[::-1]
+        queue = list(range(tree._root.span[1], 0, -1)) # queue of EDUS indices
         gen_train_data_tree(root, stack, queue, tree_samples)
         tree._samples = copy.copy(tree_samples)
         for sample in tree_samples:
             sample.tree = tree
             samples.append(sample)
-    y_all = [action_to_ind_map[samples[i].action] for i in range(len(samples))]
-    y_all = np.unique(y_all)
+    y_all = np.unique([action_to_ind_map[sample.action] for sample in samples])
     return samples, y_all
 
 
