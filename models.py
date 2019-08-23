@@ -34,9 +34,7 @@ class Network(nn.Module):
 
 def svm_model(trees, samples, labels, vocab, tag_to_ind_map, n_jobs, verbose=0):
     n_estimators = 10
-    clf = OneVsRestClassifier(BaggingClassifier(
-        LinearSVC(penalty='l1', dual=False, tol=1e-7, verbose=verbose),
-        max_samples=1.0 / n_estimators, n_estimators=n_estimators, n_jobs=n_jobs))
+    clf = LinearSVC(penalty='l1', dual=False, tol=1e-7, verbose=verbose)
     print_model(clf, len(samples), len(labels))
     X, y = extract_features(trees, samples, vocab, None, tag_to_ind_map)
     clf.fit(X, y)
@@ -80,34 +78,18 @@ def neural_network_model(trees, samples, vocab, tag_to_ind_map, iterations=200, 
     return net
 
 
-
-
 def neural_net_predict(net, x_vecs):
     return net(Variable(torch.tensor(x_vecs, dtype=torch.float)))
 
 
-def mini_batch_linear_model(trees, samples, y_all, vocab, tag_to_ind_map, iterations=200, subset_size=500):
-
-    print("n_samples = {}, n_classes = {}".format(len(samples), len(y_all)))
-    print("Running linear model")
-
-    classes = y_all
-
-    clf = linear_model.SGDClassifier(tol=1e-7, learning_rate='constant', eta0=0.1)
-    print(clf)
-
-    for _ in range(iterations):
-        [x_vecs, y_labels] = extract_features(trees, samples, vocab, subset_size, tag_to_ind_map)
-        linear_train(clf, x_vecs, y_labels, classes)
-        classes = None
+def sgd_model(trees, samples, labels, vocab, tag_to_ind_map, n_jobs, iterations=200, subset_size=500, verbose=0):
+    n_estimators = 10
+    clf = linear_model.SGDClassifier(penalty='l1', verbose=verbose, n_jobs=n_jobs)
+    print_model(clf, len(samples), len(labels))
+    X, y = extract_features(trees, samples, vocab, None, tag_to_ind_map)
+    clf.fit(X, y)
+    # for _ in range(iterations):
+    #     [x_vecs, y_labels] = extract_features(trees, samples, vocab, subset_size, tag_to_ind_map)
+    #     linear_train(clf, x_vecs, y_labels, classes)
+    #     classes = None
     return clf
-
-
-def linear_train(clf, x_vecs, y_labels, classes):
-    clf.partial_fit(x_vecs, y_labels, classes)
-    dec = clf.decision_function(x_vecs)
-    return dec
-
-
-def linear_predict(clf, x_vecs):
-    return clf.predict(x_vecs)

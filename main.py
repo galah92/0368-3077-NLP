@@ -40,11 +40,14 @@ if __name__ == '__main__':
             model = models.random_forest_model(trees, samples, y_all, vocab, tag_to_ind_map, n_jobs=1)
 
         elif model_name == 'linear':
-            model = models.mini_batch_linear_model(trees,
-                                                   samples,
-                                                   y_all,
-                                                   vocab,
-                                                   tag_to_ind_map)
+            model = models.sgd_model(trees,
+                                    samples,
+                                    y_all,
+                                    vocab,
+                                    tag_to_ind_map,
+                                    n_jobs=1,
+                                    iterations=1,
+                                    subset_size=None)
 
     print('evaluate..')
     dev_trees = load_trees(DEV_TEST_DIR, DEV_TEST_GOLD_DIR)

@@ -36,9 +36,6 @@ def load_trees(folder_path):
     return trees
 
 
-
-
-
 def eval_tree(gold_items, pred_items, idx):
     golds = [item[:idx] for item in gold_items]
     preds = [item[:idx] for item in pred_items]
@@ -60,25 +57,28 @@ def calc(num_gold, num_pred, num_common):
 
     return p, r
 
-def macro_f1(gold_trees, pred_trees):
+def micro_f1(gold_trees, pred_trees):
     result = []
     for level in range(1, 4):
-        prec = []
-        recall = []
+        total_gold = 0
+        total_pred = 0
+        total_common = 0
         for gold, pred in zip(gold_trees, pred_trees):
             num_gold, num_pred, num_common = eval_tree(gold, pred, level)
-            p, r = calc(num_gold, num_pred, num_common)
-            prec.append(p)
-            recall.append(r)
-        prec = np.array(prec).mean()
-        recall = np.array(recall).mean()
-        f1 = (2*prec*recall) / (prec+recall) if prec + recall > 0 else 0
+            total_gold += num_gold
+            total_pred += num_pred
+            total_common += num_common
+        p, r = calc(total_gold, total_pred, total_common)
+        try:
+            f1 = (2*p*r) / (p+r)
+        except ZeroDivisionError:
+            f1 = 0
         result.append(f1)
     return result
 
 def eval(gold_trees_path, predicted_trees_path):
     """
-    :param gold_trees_path: path to the folder containing to ground truth trees 
+    :param gold_trees_path: path to the folder containing the ground truth trees
     :param predicted_trees_path: path to the folder containing the predicted trees
     """
     gold_trees = load_trees(gold_trees_path)
@@ -94,10 +94,10 @@ def eval(gold_trees_path, predicted_trees_path):
         assert len(gold_tree) == len(predicted_tree), "Size of predicted tree is not equal to size of gold tree for tree number: " + g_name
         ordered_gold_trees.append(gold_tree)
         oredered_predicted_trees.append(predicted_tree)
-    macro_f1_result = macro_f1(ordered_gold_trees, oredered_predicted_trees)
-    print (str.format("Span F1: {}", str(round(macro_f1_result[0] , 4))))
-    print(str.format("Nuclearity F1: {}", str(round(macro_f1_result[1], 4))))
-    print(str.format("Relation F1: {}", str(round(macro_f1_result[2], 4))))
+    micro_f1_result = micro_f1(ordered_gold_trees, oredered_predicted_trees)
+    print (str.format("Span F1: {}", str(round(micro_f1_result[0] , 4))))
+    print(str.format("Nuclearity F1: {}", str(round(micro_f1_result[1], 4))))
+    print(str.format("Relation F1: {}", str(round(micro_f1_result[2], 4))))
 
 
 if __name__ == '__main__':

@@ -3,7 +3,7 @@ from preprocess import Node, print_serial_file
 from evaluation import eval as evaluate
 from features import add_features_per_sample
 from train_data import Sample, genstate
-from models import neural_net_predict, linear_predict
+from models import neural_net_predict
 from relations_inventory import ind_toaction_map
 import numpy as np
 import random
