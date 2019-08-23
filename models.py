@@ -1,16 +1,23 @@
 from sklearn import linear_model
+from sklearn.svm import LinearSVC
+from sklearn.ensemble import RandomForestClassifier, BaggingClassifier
+from sklearn.feature_selection import SelectFromModel
+from sklearn.multiclass import OneVsRestClassifier
 from torch.autograd import Variable
-from features import extract_features
-from relations_inventory import ind_toaction_map
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from relations_inventory import ind_toaction_map
+from features import extract_features
 
 
 hidden_size = 128
 lr = 1e-4  # learning rate
 
+def print_model(clf, samples_num, labels_num):
+    print("Samples = {}, Labels = {}".format(samples_num, labels_num))
+    print(clf)
 
 class Network(nn.Module):
     def __init__(self, n_features, hidden_size, num_classes):
@@ -25,8 +32,30 @@ class Network(nn.Module):
         return F.relu(self.fc2(x))
 
 
-def neural_network_model(trees, samples, vocab, tag_to_ind_map, iterations=200, subset_size=5000):
+def svm_model(trees, samples, labels, vocab, tag_to_ind_map, n_jobs, verbose=0):
+    n_estimators = 10
+    clf = OneVsRestClassifier(BaggingClassifier(
+        LinearSVC(penalty='l1', dual=False, tol=1e-7, verbose=verbose),
+        max_samples=1.0 / n_estimators, n_estimators=n_estimators, n_jobs=n_jobs))
+    print_model(clf, len(samples), len(labels))
+    X, y = extract_features(trees, samples, vocab, None, tag_to_ind_map)
+    clf.fit(X, y)
+    return clf
 
+
+def random_forest_model(trees, samples, labels, vocab, tag_to_ind_map, n_jobs, verbose=0):
+    n_estimators = 10
+    clf = BaggingClassifier(RandomForestClassifier(n_estimators = 100, verbose=verbose),
+        max_samples=1.0 / n_estimators, n_estimators=n_estimators, n_jobs=n_jobs)
+    # TODO : Eyal, add SelectFromModel for feature reduction.
+    print_model(clf, len(samples), len(labels))
+    X, y = extract_features(trees, samples, vocab, None, tag_to_ind_map)
+    clf.fit(X, y)
+    return clf
+
+
+def neural_network_model(trees, samples, vocab, tag_to_ind_map, iterations=200, subset_size=5000):
+    
     num_classes = len(ind_toaction_map)
 
     [x_vecs, _] = extract_features(trees, samples, vocab, 1, tag_to_ind_map)
@@ -49,6 +78,8 @@ def neural_network_model(trees, samples, vocab, tag_to_ind_map, iterations=200, 
         optimizer.step()
 
     return net
+
+
 
 
 def neural_net_predict(net, x_vecs):

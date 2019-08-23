@@ -1,9 +1,9 @@
+import numpy as np
 from relations_inventory import action_to_ind_map
 from vocabulary import split_edu_to_tags
 from vocabulary import split_edu_to_tokens
 from vocabulary import DEFAULT_TOKEN
 from vocabulary import get_tag_ind
-import random
 
 STATE_SIZE = 3
 MAX_EDU_LEN = 50
@@ -12,11 +12,14 @@ def extract_features(trees, samples, vocab, subset_size, tag_to_ind_map):
     max_edus = max(tree._root.span[1] for tree in trees)
     x_vecs = []
     y_labels = []
-    for i in range(subset_size):
-        sample_ind = random.randint(0, len(samples) - 1)
-        _, vec_feats = add_features_per_sample(samples[sample_ind], vocab, max_edus, tag_to_ind_map)
+    n = len(samples)
+    # n = 50 # DEBUG
+    sample_idx = np.random.randint(0, subset_size, subset_size) if subset_size is not None else np.array(range(n))
+    
+    for i in sample_idx:
+        _, vec_feats = add_features_per_sample(samples[i], vocab, max_edus, tag_to_ind_map)
         x_vecs.append(vec_feats)
-        y_labels.append(action_to_ind_map[samples[sample_ind].action])
+        y_labels.append(action_to_ind_map[samples[i].action])
     return [x_vecs, y_labels]
 
 
@@ -54,9 +57,9 @@ def add_features_per_sample(sample, vocab, max_edus, tag_to_ind_map):
         add_tag_features(features, tags_edus, feat_names[i + 3], i, tag_to_ind_map)
 
     for i in range(STATE_SIZE):
-        for n in range(MAX_EDU_LEN):
-            features[f'EduWord{n}-State{i}'] = split_edus[i][n] if n < len(split_edus[i]) else ""
-            features[f'EduTag{n}-State{i}'] = tags_edus[i][n] if n < len(split_edus[i]) else ""
+        for n in [0,1,2,-1,-2]:
+            features[f'EduWord{n}-State{i}'] = split_edus[i][n] if abs(n) < len(split_edus[i]) else ""
+            features[f'EduTag{n}-State{i}'] = tags_edus[i][n] if abs(n) < len(split_edus[i]) else ""
 
     feat_names = ['END-WORD-STACK1', 'END-WORD-STACK2', 'END-WORD-QUEUE1']
     add_word_features(features, split_edus, feat_names, -1)

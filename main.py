@@ -1,3 +1,4 @@
+import numpy as np
 from preprocess import load_trees
 from train_data import gen_train_data
 from rst_parser import parse_files
@@ -5,7 +6,7 @@ from vocabulary import gen_vocabulary
 from pathlib import Path
 import models
 
-
+np.random.seed(42)
 DATASET_PATH = Path('data')
 TRAINING_DIR = DATASET_PATH / 'TRAINING'
 DEV_TEST_DIR = DATASET_PATH / 'DEV'
@@ -15,7 +16,7 @@ PRED_OUTDIR = DATASET_PATH / 'pred'
 
 if __name__ == '__main__':
 
-    model_name = 'neural'  # or 'linear'
+    model_name = 'linear_svm'  # ['neural', 'linear', 'linear_svm', 'random_forest']
     baseline = False
 
     print('preprocessing..')
@@ -31,7 +32,14 @@ if __name__ == '__main__':
                                                 vocab,
                                                 tag_to_ind_map,
                                                 iterations=10)
-        else:
+        
+        elif model_name == 'linear_svm':
+            model = models.svm_model(trees, samples, y_all, vocab, tag_to_ind_map, n_jobs=1)
+        
+        elif model_name == 'random_forest':
+            model = models.random_forest_model(trees, samples, y_all, vocab, tag_to_ind_map, n_jobs=1)
+
+        elif model_name == 'linear':
             model = models.mini_batch_linear_model(trees,
                                                    samples,
                                                    y_all,

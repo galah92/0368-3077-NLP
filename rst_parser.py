@@ -8,6 +8,7 @@ from relations_inventory import ind_toaction_map
 import numpy as np
 import random
 import torch
+from tqdm import tqdm
 
 
 class Transition():
@@ -27,7 +28,7 @@ class Transition():
 def parse_files(model_name, model, trees, vocab, y_all, tag_to_ind_map, baseline, infiles_dir, gold_files_dir, pred_outdir):
     max_edus = max(tree._root.span[1] for tree in trees)
     pred_outdir.mkdir(exist_ok=True)
-    for tree in trees:
+    for tree in tqdm(trees):
         tree_file = list(infiles_dir.glob(f'{tree._fname}*.edus'))[0]
         queue = deque(line.strip() for line in tree_file.open())
         stack = deque()
@@ -86,16 +87,20 @@ def predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, y
         pred = neural_net_predict(model, x_vecs)
         action = ind_toaction_map[pred.argmax()]
         _, indices = torch.sort(pred)
+        alter_action = ind_toaction_map[indices[-2]]
     else:
-        pred = linear_predict(model, [x_vecs])
-        action = ind_toaction_map[y_all[np.argmax(pred)]]
-        indices = np.argsort(pred)	
+        if hasattr(model, "decision_function"):
+            pred = model.decision_function(np.array(x_vecs).reshape(1,-1))
+        else:
+            pred = model.predict_proba(np.array(x_vecs).reshape(1,-1))
+        action = ind_toaction_map[model.classes_[np.argmax(pred)]]
+        alter_action = ind_toaction_map[model.classes_[np.argsort(pred).squeeze()[-2]]]
 
     # correct invalid action
     if len(stack) < 2 and action != "SHIFT":
         action = "SHIFT"
     elif (not queue) and action == "SHIFT":
-        action = ind_toaction_map[indices[-2]]
+        action = alter_action
 
     if action == "SHIFT":
         transition.action = "shift"	
