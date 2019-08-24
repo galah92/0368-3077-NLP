@@ -144,7 +144,7 @@ class RNN_Model(nn.Module):
         return hidden
 
 
-def svm_model(trees, samples, vocab, tag_to_ind_map, n_jobs, verbose=0):
+def svm_model(trees, samples, vocab, tag_to_ind_map, verbose=0):
     clf = LinearSVC(penalty='l1', dual=False, tol=1e-7, verbose=verbose)
 
     X, y = extract_features(trees, samples, vocab, None, tag_to_ind_map)
@@ -152,10 +152,10 @@ def svm_model(trees, samples, vocab, tag_to_ind_map, n_jobs, verbose=0):
     return clf
 
 
-def random_forest_model(trees, samples, vocab, tag_to_ind_map, n_jobs, verbose=0):
+def random_forest_model(trees, samples, vocab, tag_to_ind_map, verbose=0):
     n_estimators = 10
     clf = BaggingClassifier(RandomForestClassifier(n_estimators = 100, verbose=verbose),
-        max_samples=1.0 / n_estimators, n_estimators=n_estimators, n_jobs=n_jobs)
+                            max_samples=1.0 / n_estimators, n_estimators=n_estimators, n_jobs=-1)
     # TODO : Eyal, add SelectFromModel for feature reduction.
     X, y = extract_features(trees, samples, vocab, None, tag_to_ind_map)
     clf.fit(X, y)
@@ -192,15 +192,15 @@ def neural_net_predict(net, x_vecs):
     return net(Variable(torch.tensor(x_vecs, dtype=torch.float)))
 
 
-def sgd_model(trees, samples, vocab, tag_to_ind_map, n_jobs, iterations=200, verbose=0):
-    clf = OneVsRestClassifier(linear_model.SGDClassifier(alpha=0.1, penalty='l2', verbose=verbose, n_jobs=n_jobs))
+def sgd_model(trees, samples, vocab, tag_to_ind_map, iterations=200, verbose=0):
+    clf = OneVsRestClassifier(linear_model.SGDClassifier(alpha=0.1, penalty='l2', verbose=verbose, n_jobs=-1))
     X, y = extract_features(trees, samples, vocab, None, tag_to_ind_map)
     clf.fit(X, y)
     return clf
 
-def multilabel_model(trees, samples, vocab, tag_to_ind_map, n_jobs, verbose=0):
-    clf_1 = BaggingClassifier(verbose=verbose, n_jobs=n_jobs)
-    clf_2 = BaggingClassifier(verbose=verbose, n_jobs=n_jobs)
+def multilabel_model(trees, samples, vocab, tag_to_ind_map, verbose=0):
+    clf_1 = BaggingClassifier(verbose=verbose, n_jobs=-1)
+    clf_2 = BaggingClassifier(verbose=verbose, n_jobs=-1)
     clf_3 = SVC(kernel='rbf', verbose=verbose)
     X, y = extract_features(trees, samples, vocab, None, tag_to_ind_map)
     y_1 = np.array([ind_toaction_map[i].split('-')[0] for i in y])

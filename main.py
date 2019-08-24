@@ -29,15 +29,15 @@ if __name__ == '__main__':
         if model_name == 'rnn':
             model = models.rnn_model(trees, samples, vocab, tag_to_ind_map)
         if model_name == 'neural':
-            model = models.neural_network_model(trees, samples, vocab, tag_to_ind_map, iterations=10)
+            model = models.neural_network_model(trees, samples, vocab, tag_to_ind_map)
         elif model_name == 'linear_svm':
-            model = models.svm_model(trees, samples, vocab, tag_to_ind_map, n_jobs=1)
+            model = models.svm_model(trees, samples, vocab, tag_to_ind_map)
         elif model_name == 'random_forest':
-            model = models.random_forest_model(trees, samples, vocab, tag_to_ind_map, n_jobs=1)
+            model = models.random_forest_model(trees, samples, vocab, tag_to_ind_map)
         elif model_name == 'sgd':
-            model = models.sgd_model(trees, samples, vocab, tag_to_ind_map, n_jobs=-1, iterations=1)
+            model = models.sgd_model(trees, samples, vocab, tag_to_ind_map)
         elif model_name == 'multi_label':
-            model = models.multilabel_model(trees, samples, vocab, tag_to_ind_map, n_jobs=-1)
+            model = models.multilabel_model(trees, samples, vocab, tag_to_ind_map)
 
     print('evaluate..')
     dev_trees = load_trees(DEV_TEST_DIR, DEV_TEST_GOLD_DIR)
