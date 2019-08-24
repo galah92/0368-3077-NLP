@@ -1,9 +1,9 @@
 from collections import deque
 from preprocess import Node, print_serial_file
 from evaluation import eval as evaluate
-from features import add_features_per_sample
-from train_data import Sample, genstate
-from models import neural_net_predict
+from features import add_features_per_sample, extract_features
+from train_data import Sample, genstate, gen_train_data
+from models import neural_net_predict, rnn_model, add_padding, rnn_predict
 from relations_inventory import ind_toaction_map
 import numpy as np
 import random
@@ -38,6 +38,16 @@ def parse_files(model_name, model, trees, vocab, y_all, tag_to_ind_map, baseline
 
 
 def parse_file(queue, stack, model_name, model, tree, vocab, max_edus, y_all, tag_to_ind_map, baseline):
+    ## RNN ##
+    # samples, _ = gen_train_data([tree])
+    # x_vecs, _, sents_idx = extract_features([tree], samples, vocab, None, tag_to_ind_map, rnn=True)
+    # batch_size = 1
+    # input_seq = np.zeros((batch_size, model.max_seq_len, model.input_size), dtype=np.float32)
+    # input_seq[0] = add_padding(x_vecs, shape=(model.max_seq_len, model.input_size))
+    # actions, _ = rnn_predict(model, input_seq)
+    # actions = actions#[:len(x_vecs)+1]
+    ######
+
     leaf_ind = 1
     while queue or len(stack) != 1:
         node = Node()
@@ -83,7 +93,9 @@ def predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, y
     sample.tree = tree
     _, x_vecs = add_features_per_sample(sample, vocab, max_edus, tag_to_ind_map)
 
-    if model_name == "neural":
+    if model_name == "rnn":
+        alter_action = 'REDUCE-NN-ELABORATION' #DEBUG ONLY
+    elif model_name == "neural":
         pred = neural_net_predict(model, x_vecs)
         action = ind_toaction_map[pred.argmax()]
         _, indices = torch.sort(pred)
