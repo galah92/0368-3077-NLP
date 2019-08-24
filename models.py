@@ -1,21 +1,15 @@
 from sklearn import linear_model
 from sklearn.svm import LinearSVC, SVC
 from sklearn.ensemble import RandomForestClassifier, BaggingClassifier
-from sklearn.feature_selection import SelectFromModel
-from sklearn.model_selection import GridSearchCV
 from sklearn.multiclass import OneVsRestClassifier
 from torch.autograd import Variable
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from relations_inventory import ind_toaction_map, action_to_ind_map, ind_toaction_map
+from relations_inventory import ind_toaction_map
 from features import extract_features
 import numpy as np
-import pandas as pd
-# from sklearn.decomposition import PCA
-# from matplotlib import pyplot as plt
-# import matplotlib.cm as cm
 
 
 hidden_size = 128
@@ -30,11 +24,9 @@ else:
     device = torch.device("cpu")
     print("GPU not available, CPU used")
 
-def print_model(clf1, samples_num, labels_num, clf2=None, clf3=None):
-    print("Samples = {}, Labels = {}".format(samples_num, labels_num))
-    print(f"{clf1}\n{clf2}\n{clf3}")
 
 class Network(nn.Module):
+
     def __init__(self, n_features, hidden_size, num_classes):
         super(Network, self).__init__()
         self.fc1 = nn.Linear(n_features, hidden_size)
@@ -47,11 +39,6 @@ class Network(nn.Module):
         return F.relu(self.fc2(x))
 
 
-def one_hot_encode(label, labels, action_to_ind_map=action_to_ind_map):
-    vec = np.zeros(len(labels), dtype=np.float32)
-    vec[np.where(labels == ind_toaction_map[label])] = 1.0
-    return vec
-
 def add_padding(X, shape):
     arr = np.zeros(shape=shape)
     max_len = shape[0]
@@ -62,6 +49,7 @@ def add_padding(X, shape):
             arr[i] = X[i]
 
     return arr
+
 
 def rnn_model(trees, samples, vocab, tag_to_ind_map):
     unique_labels = np.unique([sample.action for sample in samples])
@@ -105,6 +93,7 @@ def rnn_model(trees, samples, vocab, tag_to_ind_map):
             print (f'Epoch: {epoch}/{n_epochs}.............', end=' ')
             print (f'Loss: {loss.item():.4f}')
 
+
 class RNN_Model(nn.Module):
     def __init__(self, input_size, output_size, hidden_dim, n_layers):
         super(RNN_Model, self).__init__()
@@ -128,21 +117,19 @@ class RNN_Model(nn.Module):
         return hidden
 
 
-def svm_model(trees, samples, labels, vocab, tag_to_ind_map, n_jobs, verbose=0):
-    n_estimators = 10
+def svm_model(trees, samples, vocab, tag_to_ind_map, n_jobs, verbose=0):
     clf = LinearSVC(penalty='l1', dual=False, tol=1e-7, verbose=verbose)
-    print_model(clf, len(samples), len(labels))
+
     X, y = extract_features(trees, samples, vocab, None, tag_to_ind_map)
     clf.fit(X, y)
     return clf
 
 
-def random_forest_model(trees, samples, labels, vocab, tag_to_ind_map, n_jobs, verbose=0):
+def random_forest_model(trees, samples, vocab, tag_to_ind_map, n_jobs, verbose=0):
     n_estimators = 10
     clf = BaggingClassifier(RandomForestClassifier(n_estimators = 100, verbose=verbose),
         max_samples=1.0 / n_estimators, n_estimators=n_estimators, n_jobs=n_jobs)
     # TODO : Eyal, add SelectFromModel for feature reduction.
-    print_model(clf, len(samples), len(labels))
     X, y = extract_features(trees, samples, vocab, None, tag_to_ind_map)
     clf.fit(X, y)
     return clf
@@ -178,28 +165,22 @@ def neural_net_predict(net, x_vecs):
     return net(Variable(torch.tensor(x_vecs, dtype=torch.float)))
 
 
-def sgd_model(trees, samples, labels, vocab, tag_to_ind_map, n_jobs, iterations=200, subset_size=500, verbose=0):
-    n_estimators = 10
+def sgd_model(trees, samples, vocab, tag_to_ind_map, n_jobs, iterations=200, subset_size=500, verbose=0):
     clf = OneVsRestClassifier(linear_model.SGDClassifier(alpha=0.1, penalty='l2', verbose=verbose, n_jobs=n_jobs))
-    print_model(clf, len(samples), len(labels))
     X, y = extract_features(trees, samples, vocab, None, tag_to_ind_map)
     clf.fit(X, y)
     return clf
 
-def multilabel_model(trees, samples, labels, vocab, tag_to_ind_map, n_jobs, subset_size=500, verbose=0):
-    n_estimators = 10
+
+def multilabel_model(trees, samples, vocab, tag_to_ind_map, n_jobs, subset_size=500, verbose=0):
     clf_1 = OneVsRestClassifier(linear_model.SGDClassifier(alpha=0.1, penalty='l2', verbose=verbose, n_jobs=n_jobs))
     clf_2 = OneVsRestClassifier(linear_model.SGDClassifier(alpha=0.1, penalty='l2', verbose=verbose, n_jobs=n_jobs))
     clf_3 = SVC(kernel='rbf', verbose=verbose)
-    print_model(clf_1, len(samples), len(labels), clf_2, clf_3)
     X, y = extract_features(trees, samples, vocab, None, tag_to_ind_map)
-
     y_1 = np.array([ind_toaction_map[i].split('-')[0] for i in y])
     y_2 = np.array([ind_toaction_map[i].split('-')[1] if ind_toaction_map[i] != 'SHIFT' else 'SHIFT' for i in y])
     y_3 = np.array([ind_toaction_map[i].split('-')[2] if ind_toaction_map[i] != 'SHIFT' else 'SHIFT' for i in y])
-
     clf_1.fit(X, y_1)
     clf_2.fit(X, y_2)
     clf_3.fit(X, y_3)
-
     return clf_1, clf_2, clf_3
