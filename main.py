@@ -2,12 +2,15 @@ from preprocess import load_trees
 from train_data import gen_train_data
 from rst_parser import parse_files
 from vocabulary import gen_vocabulary
-from neural_network import neural_network_model
+from features import extract_features
+
+from neural_network import neural_network
 from random_forest import random_forest
 from multi_label import multi_label
 from svm import svm
 from sgd import sgd
 from rnn import rnn
+
 from pathlib import Path
 import numpy as np
 import argparse
@@ -25,13 +28,12 @@ MODELS = {
     'svm': svm,
     'random_forest': random_forest,
     'multi_label': multi_label,
-    'neural': neural_network_model,
+    'neural': neural_network,
     'rnn': rnn,
 }
 
 
 if __name__ == '__main__':
-
     parser = argparse.ArgumentParser(prog=__package__)
     parser.add_argument('--model', choices=MODELS.keys(), default='sgd')
     args = parser.parse_args()
@@ -39,10 +41,15 @@ if __name__ == '__main__':
     print('preprocessing..')
     trees = load_trees(TRAINING_DIR)
     vocab, tag_to_ind_map = gen_vocabulary(trees)
+    samples = gen_train_data(trees)
+    x_train, y_train, sents_idx = extract_features(trees, samples, vocab,
+                                                   tag_to_ind_map)
 
     print('training..')
-    samples = gen_train_data(trees)
-    model = MODELS[args.model](trees, samples, vocab, tag_to_ind_map)
+    model = MODELS[args.model](x_train, y_train,
+                               trees=trees,
+                               samples=samples,
+                               sents_idx=sents_idx)
 
     print('evaluate..')
     dev_trees = load_trees(DEV_TEST_DIR, DEV_TEST_GOLD_DIR)

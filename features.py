@@ -1,4 +1,3 @@
-import numpy as np
 from relations_inventory import action_to_ind_map
 from vocabulary import split_edu_to_tags, split_edu_to_tokens
 from vocabulary import get_tag_ind, DEFAULT_TOKEN
@@ -7,23 +6,19 @@ from vocabulary import get_tag_ind, DEFAULT_TOKEN
 STATE_SIZE = 3
 
 
-def extract_features(trees, samples, vocab, subset_size, tag_to_ind_map, rnn=False):
+def extract_features(trees, samples, vocab, tag_to_ind_map):
     max_edus = max(tree._root.span[1] for tree in trees)
     x_vecs = []
     y_labels = []
     sents_idx = []
     n = len(samples)
     # n = 150  # DEBUG
-    sample_idx = np.random.randint(0, subset_size, subset_size) if subset_size is not None else np.array(range(n))
-
-    for i in sample_idx:
+    for i in range(n):
         _, vec_feats = add_features_per_sample(samples[i], vocab, max_edus, tag_to_ind_map)
         x_vecs.append(vec_feats)
         y_labels.append(action_to_ind_map[samples[i].action])
         sents_idx.append(samples[i].tree._edu_to_sent_ind[samples[i].state[0]])
-    if rnn:
-        return x_vecs, y_labels, sents_idx
-    return x_vecs, y_labels
+    return x_vecs, y_labels, sents_idx
 
 
 def add_features_per_sample(sample, vocab, max_edus, tag_to_ind_map):

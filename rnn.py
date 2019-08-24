@@ -1,5 +1,4 @@
-from relations_inventory import ind_toaction_map, action_to_ind_map
-from features import extract_features
+from relations_inventory import ind_toaction_map
 import numpy as np
 import torch.nn as nn
 import torch
@@ -13,7 +12,7 @@ else:
     print("GPU not available, CPU used")
 
 
-def one_hot_encode(label, labels, action_to_ind_map=action_to_ind_map):
+def one_hot_encode(label, labels):
     vec = np.zeros(len(labels), dtype=np.float32)
     vec[np.where(labels == ind_toaction_map[label])] = 1.0
     return vec
@@ -31,14 +30,10 @@ def add_padding(X, shape, one_hot=False, labels=None):
     return arr
 
 
-def rnn(trees, samples, vocab, tag_to_ind_map):
-    x_vecs, y_labels, sents_idx = extract_features(trees, samples, vocab,
-                                                   None, tag_to_ind_map,
-                                                   rnn=True)
-
-    unique_labels = np.unique([sample.action for sample in samples])
-    max_seq_len = max(tree._root.span[1] for tree in trees)
-    input_size = len(x_vecs[0])
+def rnn(x_train, y_train, **kwargs):
+    unique_labels = np.unique([sample.action for sample in kwargs['samples']])
+    max_seq_len = max(tree._root.span[1] for tree in kwargs['trees'])
+    input_size = len(x_train[0])
     output_size = len(unique_labels)
     model = RnnModel(input_size=input_size, output_size=output_size,
                      hidden_dim=256, n_layers=2, unique_labels=unique_labels,
@@ -50,17 +45,18 @@ def rnn(trees, samples, vocab, tag_to_ind_map):
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 
     # train data
+    sents_idx = kwargs['sents_idx']
     batch_size = sents_idx.count('')
     input_seq = np.zeros((batch_size, max_seq_len, input_size))
     target_seq = np.zeros((batch_size, max_seq_len, output_size))
 
     old_idx = 0
     j = -1
-    for idx in range(len(y_labels)):
+    for idx in range(len(y_train)):
         if sents_idx[idx] == '':
             j += 1
-            input_seq[j] = add_padding(x_vecs[old_idx:idx], shape=(max_seq_len, input_size))
-            target_seq[j] = add_padding(y_labels[old_idx:idx], shape=(max_seq_len, output_size), one_hot=True, labels=unique_labels)
+            input_seq[j] = add_padding(x_train[old_idx:idx], shape=(max_seq_len, input_size))
+            target_seq[j] = add_padding(y_train[old_idx:idx], shape=(max_seq_len, output_size), one_hot=True, labels=unique_labels)
             old_idx = idx
     input_seq = torch.from_numpy(input_seq)
     target_seq = torch.Tensor(target_seq)

@@ -39,7 +39,7 @@ def parse_files(model_name, model, trees, vocab, tag_to_ind_map, infiles_dir, go
 def parse_file(queue, stack, model_name, model, tree, vocab, max_edus, tag_to_ind_map):
     ## RNN ##
     # samples, _ = gen_train_data([tree])
-    # x_vecs, _, sents_idx = extract_features([tree], samples, vocab, None, tag_to_ind_map, rnn=True)
+    # x_vecs, _, sents_idx = extract_features([tree], samples, vocab, tag_to_ind_map)
     # batch_size = 1
     # input_seq = np.zeros((batch_size, model.max_seq_len, model.input_size), dtype=np.float32)
     # input_seq[0] = add_padding(x_vecs, shape=(model.max_seq_len, model.input_size))

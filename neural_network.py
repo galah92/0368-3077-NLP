@@ -1,5 +1,4 @@
 from relations_inventory import ind_toaction_map
-from features import extract_features
 import torch.nn as nn
 import torch
 
@@ -18,9 +17,8 @@ class Network(nn.Module):
         return nn.functional.relu(self.fc2(x))
 
 
-def neural_network_model(trees, samples, vocab, tag_to_ind_map, num_iters=200):
+def neural_network(x_train, y_train, num_iters=200, **kwargs):
     num_classes = len(ind_toaction_map)
-    x_train, y_train = extract_features(trees, samples, vocab, None, tag_to_ind_map)
     net = Network(len(x_train[0]), hidden_size=128, num_classes=num_classes)
     print(net)
     criterion = nn.CrossEntropyLoss()
