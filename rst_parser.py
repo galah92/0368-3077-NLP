@@ -32,7 +32,7 @@ def parse_files(model_name, model, trees, vocab, y_all, tag_to_ind_map, infiles_
         tree_file = list(infiles_dir.glob(f'{tree._fname}*.edus'))[0]
         queue = deque(line.strip() for line in tree_file.open())
         stack = deque()
-        root = parse_file(queue, stack, model_name, model, tree, vocab, max_edus, y_all, tag_to_ind_map, baseline)
+        root = parse_file(queue, stack, model_name, model, tree, vocab, max_edus, y_all, tag_to_ind_map)
         print_serial_file(pred_outdir / tree._fname, root)
     evaluate(gold_files_dir, pred_outdir)
 
