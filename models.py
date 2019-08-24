@@ -162,7 +162,7 @@ def random_forest_model(trees, samples, vocab, tag_to_ind_map, n_jobs, verbose=0
     return clf
 
 
-def neural_network_model(trees, samples, vocab, tag_to_ind_map, iterations=200, subset_size=5000):
+def neural_network_model(trees, samples, vocab, tag_to_ind_map, iterations=200):
     
     num_classes = len(ind_toaction_map)
 
@@ -178,7 +178,7 @@ def neural_network_model(trees, samples, vocab, tag_to_ind_map, iterations=200, 
     optimizer = optim.SGD(net.parameters(), lr=lr, momentum=0.9)
 
     for i in range(iterations):
-        [x_vecs, y_labels] = extract_features(trees, samples, vocab, subset_size, tag_to_ind_map)
+        [x_vecs, y_labels] = extract_features(trees, samples, vocab, 5000, tag_to_ind_map)
         y_pred = net(Variable(torch.tensor(x_vecs, dtype=torch.float)))
         loss = criterion(y_pred, Variable(torch.tensor(y_labels, dtype=torch.long)))
         optimizer.zero_grad()
@@ -192,14 +192,13 @@ def neural_net_predict(net, x_vecs):
     return net(Variable(torch.tensor(x_vecs, dtype=torch.float)))
 
 
-def sgd_model(trees, samples, vocab, tag_to_ind_map, n_jobs, iterations=200, subset_size=500, verbose=0):
+def sgd_model(trees, samples, vocab, tag_to_ind_map, n_jobs, iterations=200, verbose=0):
     clf = OneVsRestClassifier(linear_model.SGDClassifier(alpha=0.1, penalty='l2', verbose=verbose, n_jobs=n_jobs))
     X, y = extract_features(trees, samples, vocab, None, tag_to_ind_map)
     clf.fit(X, y)
     return clf
 
-def multilabel_model(trees, samples, vocab, tag_to_ind_map, n_jobs, subset_size=500, verbose=0):
-    n_estimators = 10
+def multilabel_model(trees, samples, vocab, tag_to_ind_map, n_jobs, verbose=0):
     clf_1 = BaggingClassifier(verbose=verbose, n_jobs=n_jobs)
     clf_2 = BaggingClassifier(verbose=verbose, n_jobs=n_jobs)
     clf_3 = SVC(kernel='rbf', verbose=verbose)
