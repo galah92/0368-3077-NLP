@@ -24,22 +24,22 @@ class Transition():
         return s.upper()
 
 
-def parse_files(model_name, model, trees, vocab, tag_to_ind_map, infiles_dir, gold_files_dir, pred_outdir):
+def parse_files(model_name, model, trees, vocab, tag_to_idx, infiles_dir, gold_files_dir, pred_outdir):
     max_edus = max(tree._root.span[1] for tree in trees)
     pred_outdir.mkdir(exist_ok=True)
     for tree in tqdm(trees):
         tree_file = list(infiles_dir.glob(f'{tree._fname}*.edus'))[0]
         queue = deque(line.strip() for line in tree_file.open())
         stack = deque()
-        root = parse_file(queue, stack, model_name, model, tree, vocab, max_edus, tag_to_ind_map)
+        root = parse_file(queue, stack, model_name, model, tree, vocab, max_edus, tag_to_idx)
         print_serial_file(pred_outdir / tree._fname, root)
     evaluate(gold_files_dir, pred_outdir)
 
 
-def parse_file(queue, stack, model_name, model, tree, vocab, max_edus, tag_to_ind_map):
+def parse_file(queue, stack, model_name, model, tree, vocab, max_edus, tag_to_idx):
     ## RNN ##
     # samples, _ = gen_train_data([tree])
-    # x_vecs, _, sents_idx = extract_features([tree], samples, vocab, tag_to_ind_map)
+    # x_vecs, _, sents_idx = get_features([tree], samples, vocab, tag_to_idx)
     # batch_size = 1
     # input_seq = np.zeros((batch_size, model.max_seq_len, model.input_size), dtype=np.float32)
     # input_seq[0] = add_padding(x_vecs, shape=(model.max_seq_len, model.input_size))
@@ -52,7 +52,7 @@ def parse_file(queue, stack, model_name, model, tree, vocab, max_edus, tag_to_in
         node = Node()
         node.relation = 'SPAN'
 
-        transition = predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, tag_to_ind_map, leaf_ind)
+        transition = predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, tag_to_idx, leaf_ind)
 
         if transition.action == "shift":
             node = Node(relation='SPAN',
@@ -82,12 +82,12 @@ def parse_file(queue, stack, model_name, model, tree, vocab, max_edus, tag_to_in
     return stack.pop()
 
 
-def predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, tag_to_ind_map, top_ind_in_queue):
+def predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, tag_to_idx, top_ind_in_queue):
     transition = Transition()
     sample = Sample()
     sample.state = gen_config(queue, stack, top_ind_in_queue)
     sample.tree = tree
-    _, x_vecs = add_features_per_sample(sample, vocab, max_edus, tag_to_ind_map)
+    _, x_vecs = add_features_per_sample(sample, vocab, max_edus, tag_to_idx)
 
     if model_name == "rnn":
         alter_action = 'REDUCE-NN-ELABORATION'  # DEBUG ONLY

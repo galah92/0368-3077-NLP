@@ -35,21 +35,21 @@ def split_edu_to_tags(tree, edu_ind):
     return [tag for _, tag in word_tag_list]
 
 
-def get_tag_ind(tag_to_ind_map, tag, use_def_tag=False):
-    if tag not in tag_to_ind_map:
+def get_tag_ind(tag_to_idx, tag, use_def_tag=False):
+    if tag not in tag_to_idx:
         if not use_def_tag:
-            raise Exception("Could not find tag:" + tag)
-        return tag_to_ind_map['']  # empty string treated as default tag
-    return tag_to_ind_map[tag]
+            raise Exception(f'Could not find tag: {tag}')
+        return tag_to_idx['']  # empty string treated as default tag
+    return tag_to_idx[tag]
 
 
 def build_tags_dict(trees):
-    tag_to_ind_map = {'': 0}
+    tag_to_idx = {'': 0}
     tag_ind = 1
     for tree in trees:
         for word_tag_list in tree._edu_word_tag_table[1:]:
             for _, tag in word_tag_list:
-                if tag_to_ind_map.get(tag, None) is None:
-                    tag_to_ind_map[tag] = tag_ind
+                if tag_to_idx.get(tag, None) is None:
+                    tag_to_idx[tag] = tag_ind
                     tag_ind += 1
-    return tag_to_ind_map
+    return tag_to_idx

@@ -2,7 +2,7 @@ from preprocess import load_trees
 from train_data import gen_train_data
 from rst_parser import parse_files
 from vocabulary import gen_vocabulary
-from features import extract_features
+from features import get_features
 
 from neural_network import neural_network
 from random_forest import random_forest
@@ -40,10 +40,10 @@ if __name__ == '__main__':
 
     print('preprocessing..')
     trees = load_trees(TRAINING_DIR)
-    vocab, tag_to_ind_map = gen_vocabulary(trees)
+    vocab, tag_to_idx = gen_vocabulary(trees)
     samples = gen_train_data(trees)
-    x_train, y_train, sents_idx = extract_features(trees, samples, vocab,
-                                                   tag_to_ind_map)
+    x_train, y_train, sents_idx = get_features(trees, samples,
+                                               vocab, tag_to_idx)
 
     print('training..')
     model = MODELS[args.model](x_train, y_train,
@@ -53,5 +53,5 @@ if __name__ == '__main__':
 
     print('evaluate..')
     dev_trees = load_trees(DEV_TEST_DIR, DEV_TEST_GOLD_DIR)
-    parse_files(args.model, model, dev_trees, vocab, tag_to_ind_map,
+    parse_files(args.model, model, dev_trees, vocab, tag_to_idx,
                 DEV_TEST_DIR, DEV_TEST_GOLD_DIR, PRED_OUTDIR)
