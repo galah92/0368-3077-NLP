@@ -1,9 +1,8 @@
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
 from relations_inventory import ind_toaction_map, action_to_ind_map
 from features import extract_features
 import numpy as np
+import torch.nn as nn
+import torch
 
 
 if torch.cuda.is_available():
@@ -22,9 +21,8 @@ def one_hot_encode(label, labels, action_to_ind_map=action_to_ind_map):
 
 def add_padding(X, shape, one_hot=False, labels=None):
     arr = np.zeros(shape=shape)
-    max_len = shape[0]
     x_len = len(X)
-    for i in range(max_len):
+    for i in range(shape[0]):
         if i < x_len:
             if one_hot:
                 arr[i] = one_hot_encode(X[i], labels)
@@ -34,29 +32,32 @@ def add_padding(X, shape, one_hot=False, labels=None):
 
 
 def rnn(trees, samples, vocab, tag_to_ind_map):
+    x_vecs, y_labels, sents_idx = extract_features(trees, samples, vocab,
+                                                   None, tag_to_ind_map,
+                                                   rnn=True)
+
     unique_labels = np.unique([sample.action for sample in samples])
     max_seq_len = max(tree._root.span[1] for tree in trees)
+    input_size = len(x_vecs[0])
     output_size = len(unique_labels)
-    input_size = len(extract_features(trees, samples, vocab, 1, tag_to_ind_map)[0][0])
-    model = RNN_Model(input_size=input_size, output_size=output_size, hidden_dim=256, n_layers=2, unique_labels=unique_labels, max_seq_len=max_seq_len)
+    model = RnnModel(input_size=input_size, output_size=output_size,
+                     hidden_dim=256, n_layers=2, unique_labels=unique_labels,
+                     max_seq_len=max_seq_len)
     model.to(device)
 
     # RNN hyperparameters
-    n_epochs = 100
-    lr=0.01
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 
     # train data
-    x_vecs, y_labels, sents_idx = extract_features(trees, samples, vocab, None, tag_to_ind_map, rnn=True)
-    batch_size = sents_idx.count("")
-    input_seq = np.zeros((batch_size, max_seq_len, input_size), dtype=np.float32)
-    target_seq = np.zeros((batch_size, max_seq_len, output_size), dtype=np.float32)
+    batch_size = sents_idx.count('')
+    input_seq = np.zeros((batch_size, max_seq_len, input_size))
+    target_seq = np.zeros((batch_size, max_seq_len, output_size))
 
     old_idx = 0
     j = -1
     for idx in range(len(y_labels)):
-        if sents_idx[idx] == "":
+        if sents_idx[idx] == '':
             j += 1
             input_seq[j] = add_padding(x_vecs[old_idx:idx], shape=(max_seq_len, input_size))
             target_seq[j] = add_padding(y_labels[old_idx:idx], shape=(max_seq_len, output_size), one_hot=True, labels=unique_labels)
@@ -65,18 +66,17 @@ def rnn(trees, samples, vocab, tag_to_ind_map):
     target_seq = torch.Tensor(target_seq)
 
     # Training
-    # n_epochs = 2 # DEBUG
-    for epoch in range(1, n_epochs + 1):
+    n_epochs = 100
+    for epoch in range(n_epochs):
         optimizer.zero_grad()
         input_seq = input_seq.to(device)
         output, hidden = model(input_seq)
         loss = criterion(output, np.argmax(target_seq, axis=2).view(-1).long())
-        loss.backward() 
-        optimizer.step() 
+        loss.backward()
+        optimizer.step()
         if epoch % 10 == 0:
-            print(f'Epoch: {epoch}/{n_epochs}.............', end=' ')
+            print(f'Epoch: {epoch + 1}/{n_epochs}.............', end=' ')
             print(f'Loss: {loss.item():.4f}')
-
     return model
 
 
@@ -86,18 +86,16 @@ def rnn_predict(model, input):
     out, hidden = model(input)
     prob = nn.functional.softmax(out, dim=0).data
     idx = torch.max(prob, dim=-1)[1]
-
     return [ind_toaction_map[i] for i in idx], hidden
 
 
-class RNN_Model(nn.Module):
-    def __init__(self, input_size, output_size, hidden_dim, n_layers, unique_labels, max_seq_len):
-        super(RNN_Model, self).__init__()
+class RnnModel(nn.Module):
 
-        # Defining some parameters
+    def __init__(self, input_size, output_size, hidden_dim, n_layers, unique_labels, max_seq_len):
+        super(RnnModel, self).__init__()
         self.hidden_dim = hidden_dim
         self.n_layers = n_layers
-        self.rnn = nn.RNN(input_size, hidden_dim, n_layers, batch_first=True)   
+        self.rnn = nn.RNN(input_size, hidden_dim, n_layers, batch_first=True)
         self.fc = nn.Linear(hidden_dim, output_size)
         self.input_size = input_size
         self.output_size = output_size
