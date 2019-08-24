@@ -1,13 +1,17 @@
-from sklearn import linear_model
-from sklearn.svm import LinearSVC, SVC
-from sklearn.ensemble import RandomForestClassifier, BaggingClassifier
-from sklearn.multiclass import OneVsRestClassifier
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from relations_inventory import ind_toaction_map, action_to_ind_map
 from features import extract_features
 import numpy as np
+
+
+if torch.cuda.is_available():
+    device = torch.device("cuda")
+    print("GPU is available")
+else:
+    device = torch.device("cpu")
+    print("GPU not available, CPU used")
 
 
 def one_hot_encode(label, labels, action_to_ind_map=action_to_ind_map):
@@ -20,27 +24,16 @@ def add_padding(X, shape, one_hot=False, labels=None):
     arr = np.zeros(shape=shape)
     max_len = shape[0]
     x_len = len(X)
-
     for i in range(max_len):
         if i < x_len:
             if one_hot:
                 arr[i] = one_hot_encode(X[i], labels)
             else:
                 arr[i] = X[i]
-
     return arr
 
 
-def rnn_model(trees, samples, vocab, tag_to_ind_map):
-    is_cuda = torch.cuda.is_available()
-
-    if is_cuda:
-        device = torch.device("cuda")
-        print("GPU is available")
-    else:
-        device = torch.device("cpu")
-        print("GPU not available, CPU used")
-
+def rnn(trees, samples, vocab, tag_to_ind_map):
     unique_labels = np.unique([sample.action for sample in samples])
     max_seq_len = max(tree._root.span[1] for tree in trees)
     output_size = len(unique_labels)
@@ -77,13 +70,12 @@ def rnn_model(trees, samples, vocab, tag_to_ind_map):
         optimizer.zero_grad()
         input_seq = input_seq.to(device)
         output, hidden = model(input_seq)
-        loss = criterion(output, np.argmax(target_seq,axis=2).view(-1).long())
+        loss = criterion(output, np.argmax(target_seq, axis=2).view(-1).long())
         loss.backward() 
         optimizer.step() 
-        
-        if epoch%10 == 0:
-            print (f'Epoch: {epoch}/{n_epochs}.............', end=' ')
-            print (f'Loss: {loss.item():.4f}')
+        if epoch % 10 == 0:
+            print(f'Epoch: {epoch}/{n_epochs}.............', end=' ')
+            print(f'Loss: {loss.item():.4f}')
 
     return model
 
@@ -111,7 +103,7 @@ class RNN_Model(nn.Module):
         self.output_size = output_size
         self.unique_labels = unique_labels
         self.max_seq_len = max_seq_len
-    
+
     def forward(self, x):
         batch_size = x.size(0)
         hidden = self.init_hidden(batch_size)
@@ -119,45 +111,7 @@ class RNN_Model(nn.Module):
         out = out.contiguous().view(-1, self.hidden_dim)
         out = self.fc(out)
         return out, hidden
-    
+
     def init_hidden(self, batch_size):
         hidden = torch.zeros(self.n_layers, batch_size, self.hidden_dim).to(device)
         return hidden
-
-
-def svm_model(trees, samples, vocab, tag_to_ind_map, verbose=0):
-    clf = LinearSVC(penalty='l1', dual=False, tol=1e-7, verbose=verbose)
-
-    X, y = extract_features(trees, samples, vocab, None, tag_to_ind_map)
-    clf.fit(X, y)
-    return clf
-
-
-def random_forest_model(trees, samples, vocab, tag_to_ind_map, verbose=0):
-    n_estimators = 10
-    clf = BaggingClassifier(RandomForestClassifier(n_estimators = 100, verbose=verbose),
-                            max_samples=1.0 / n_estimators, n_estimators=n_estimators, n_jobs=-1)
-    # TODO : Eyal, add SelectFromModel for feature reduction.
-    X, y = extract_features(trees, samples, vocab, None, tag_to_ind_map)
-    clf.fit(X, y)
-    return clf
-
-
-def sgd_model(trees, samples, vocab, tag_to_ind_map, iterations=200, verbose=0):
-    clf = OneVsRestClassifier(linear_model.SGDClassifier(alpha=0.1, penalty='l2', verbose=verbose, n_jobs=-1))
-    X, y = extract_features(trees, samples, vocab, None, tag_to_ind_map)
-    clf.fit(X, y)
-    return clf
-
-def multilabel_model(trees, samples, vocab, tag_to_ind_map, verbose=0):
-    clf_1 = BaggingClassifier(verbose=verbose, n_jobs=-1)
-    clf_2 = BaggingClassifier(verbose=verbose, n_jobs=-1)
-    clf_3 = SVC(kernel='rbf', verbose=verbose)
-    X, y = extract_features(trees, samples, vocab, None, tag_to_ind_map)
-    y_1 = np.array([ind_toaction_map[i].split('-')[0] for i in y])
-    y_2 = np.array([ind_toaction_map[i].split('-')[1] if ind_toaction_map[i] != 'SHIFT' else 'SHIFT' for i in y])
-    y_3 = np.array([ind_toaction_map[i].split('-')[2] if ind_toaction_map[i] != 'SHIFT' else 'SHIFT' for i in y])
-    clf_1.fit(X, y_1)
-    clf_2.fit(X, y_2)
-    clf_3.fit(X, y_3)
-    return clf_1, clf_2, clf_3
