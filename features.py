@@ -6,21 +6,24 @@ from vocabulary import DEFAULT_TOKEN
 from vocabulary import get_tag_ind
 
 STATE_SIZE = 3
-MAX_EDU_LEN = 50
 
-def extract_features(trees, samples, vocab, subset_size, tag_to_ind_map):
+def extract_features(trees, samples, vocab, subset_size, tag_to_ind_map, rnn=False):
     max_edus = max(tree._root.span[1] for tree in trees)
     x_vecs = []
     y_labels = []
+    sents_idx = []
     n = len(samples)
-    # n = 50 # DEBUG
+    # n = 150 # DEBUG
     sample_idx = np.random.randint(0, subset_size, subset_size) if subset_size is not None else np.array(range(n))
     
     for i in sample_idx:
         _, vec_feats = add_features_per_sample(samples[i], vocab, max_edus, tag_to_ind_map)
         x_vecs.append(vec_feats)
         y_labels.append(action_to_ind_map[samples[i].action])
-    return [x_vecs, y_labels]
+        sents_idx.append(samples[i].tree._edu_to_sent_ind[samples[i].state[0]])
+    if rnn:
+        return x_vecs, y_labels, sents_idx
+    return x_vecs, y_labels
 
 
 def add_features_per_sample(sample, vocab, max_edus, tag_to_ind_map):

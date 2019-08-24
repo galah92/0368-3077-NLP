@@ -88,6 +88,35 @@ def predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, y
         action = ind_toaction_map[pred.argmax()]
         _, indices = torch.sort(pred)
         alter_action = ind_toaction_map[indices[-2]]
+    elif model_name == 'multi_label':
+        clf1, clf2, clf3 = model
+        
+        if hasattr(clf1, "decision_function"):
+            pred1 = clf1.decision_function(np.array(x_vecs).reshape(1,-1))
+        else:
+            pred1 = clf1.predict_proba(np.array(x_vecs).reshape(1,-1))
+        
+        if hasattr(clf2, "decision_function"):
+            pred2 = clf2.decision_function(np.array(x_vecs).reshape(1,-1))
+        else:
+            pred2 = clf2.predict_proba(np.array(x_vecs).reshape(1,-1))
+        
+        if hasattr(clf3, "decision_function"):
+            pred3 = clf3.decision_function(np.array(x_vecs).reshape(1,-1))
+        else:
+            pred3 = clf3.predict_proba(np.array(x_vecs).reshape(1,-1))
+
+        a1 = 'REDUCE'
+        # fix the action if needed
+        a2 = clf2.classes_[np.argmax(pred2)] if clf2.classes_[np.argmax(pred2)] != 'SHIFT' else clf2.classes_[np.argsort(pred2).squeeze()[-2]] 
+        a3 = clf3.classes_[np.argmax(pred3)] if clf3.classes_[np.argmax(pred3)] != 'SHIFT' else clf3.classes_[np.argsort(pred3).squeeze()[-2]]
+
+        if clf1.classes_[np.argmax(pred1)] == 'SHIFT':
+            action = 'SHIFT'            
+            alter_action = ('-').join([a1, a2,a3])
+        else:
+            action = ('-').join([a1, a2,a3])
+
     else:
         if hasattr(model, "decision_function"):
             pred = model.decision_function(np.array(x_vecs).reshape(1,-1))
