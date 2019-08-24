@@ -1,11 +1,11 @@
 import numpy as np
 from relations_inventory import action_to_ind_map
-from vocabulary import split_edu_to_tags
-from vocabulary import split_edu_to_tokens
-from vocabulary import DEFAULT_TOKEN
-from vocabulary import get_tag_ind
+from vocabulary import split_edu_to_tags, split_edu_to_tokens
+from vocabulary import get_tag_ind, DEFAULT_TOKEN
+
 
 STATE_SIZE = 3
+
 
 def extract_features(trees, samples, vocab, subset_size, tag_to_ind_map, rnn=False):
     max_edus = max(tree._root.span[1] for tree in trees)
@@ -13,9 +13,9 @@ def extract_features(trees, samples, vocab, subset_size, tag_to_ind_map, rnn=Fal
     y_labels = []
     sents_idx = []
     n = len(samples)
-    # n = 150 # DEBUG
+    # n = 150  # DEBUG
     sample_idx = np.random.randint(0, subset_size, subset_size) if subset_size is not None else np.array(range(n))
-    
+
     for i in sample_idx:
         _, vec_feats = add_features_per_sample(samples[i], vocab, max_edus, tag_to_ind_map)
         x_vecs.append(vec_feats)
@@ -53,14 +53,14 @@ def add_features_per_sample(sample, vocab, max_edus, tag_to_ind_map):
     feat_names.append(['SEC-TAG-STACK1', 'SEC-TAG-STACK2', 'SEC-TAG-QUEUE1'])
     feat_names.append(['THIR-TAG-STACK1', 'THIR-TAG-STACK2', 'THIR-TAG-QUEUE1'])
 
-    for i in range(0,3):
+    for i in range(0, 3):
         add_word_features(features, split_edus, feat_names[i], i)
 
-    for i in range(0,3):
+    for i in range(0, 3):
         add_tag_features(features, tags_edus, feat_names[i + 3], i, tag_to_ind_map)
 
     for i in range(STATE_SIZE):
-        for n in [0,1,2,-1,-2]:
+        for n in [0, 1, 2, -1, -2]:
             features[f'EduWord{n}-State{i}'] = split_edus[i][n] if abs(n) < len(split_edus[i]) else ""
             features[f'EduTag{n}-State{i}'] = tags_edus[i][n] if abs(n) < len(split_edus[i]) else ""
 
@@ -115,20 +115,14 @@ def add_edu_features(features, tree, edus_ind, split_edus, max_edus):
         else:
             edu_ind_in_tree.append(0)
 
-    
-
     features['DIST-FROM-START-STACK1'] = (edu_ind_in_tree[0] - 1.0) / max_edus
-    features['DIST-FROM-END-STACK1'] = \
-        (tree._root.span[1] - edu_ind_in_tree[0]) / max_edus
+    features['DIST-FROM-END-STACK1'] = (tree._root.span[1] - edu_ind_in_tree[0]) / max_edus
 
     features['DIST-FROM-START-STACK2'] = (edu_ind_in_tree[1] - 1.0) / max_edus
-    features['DIST-FROM-END-STACK2'] = \
-        (tree._root.span[1] - edu_ind_in_tree[1]) / max_edus
+    features['DIST-FROM-END-STACK2'] = (tree._root.span[1] - edu_ind_in_tree[1]) / max_edus
 
     features['DIST-FROM-START-QUEUE1'] = (edu_ind_in_tree[2] - 1.0) / max_edus
-
-    features['DIST-STACK1-QUEUE1'] = \
-        (edu_ind_in_tree[2] - edu_ind_in_tree[0]) / max_edus 
+    features['DIST-STACK1-QUEUE1'] = (edu_ind_in_tree[2] - edu_ind_in_tree[0]) / max_edus
 
     features['SpanSize'] = tree._root.span[1]-tree._root.span[0]
 

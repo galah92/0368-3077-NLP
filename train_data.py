@@ -2,6 +2,7 @@ import copy
 
 
 class Sample():
+
     def __init__(self):
         self.state = []  # [v1, v2, v3] where v1 & v2 are the elements at the top of the stack
         self.action = ''
@@ -11,11 +12,8 @@ class Sample():
 def gen_train_data(trees):
     samples = []
     for tree in trees:
-        root = tree._root
-        stack = []
-        tree_samples = []
-        queue = list(range(tree._root.span[1], 0, -1)) # queue of EDUS indices
-        gen_train_data_tree(root, stack, queue, tree_samples)
+        queue = list(range(tree._root.span[1], 0, -1))  # queue of EDUS indices
+        tree_samples = get_sample(node=tree._root, stack=[], queue=queue)
         tree._samples = copy.copy(tree_samples)
         for sample in tree_samples:
             sample.tree = tree
@@ -23,7 +21,7 @@ def gen_train_data(trees):
     return samples
 
 
-def gen_train_data_tree(node, stack, queue, samples):
+def get_sample(node, stack, queue, samples=[]):
     sample = Sample()
     if not node.childs:
         sample.action = 'SHIFT'
@@ -32,8 +30,8 @@ def gen_train_data_tree(node, stack, queue, samples):
         stack.append(node)
     else:
         l, r = node.childs
-        gen_train_data_tree(l, stack, queue, samples)
-        gen_train_data_tree(r, stack, queue, samples)
+        get_sample(l, stack, queue, samples)
+        get_sample(r, stack, queue, samples)
         if r.nuclearity == 'Satellite':
             sample.action = genaction(node, r)
         else:
@@ -43,6 +41,7 @@ def gen_train_data_tree(node, stack, queue, samples):
         assert(stack.pop(-1) == node.childs[0])
         stack.append(node)
     samples.append(sample)
+    return samples
 
 
 def genaction(parent, child):

@@ -1,9 +1,10 @@
-import numpy as np
 from preprocess import load_trees
 from train_data import gen_train_data
 from rst_parser import parse_files
 from vocabulary import gen_vocabulary
+from neural_network import neural_network_model
 from pathlib import Path
+import numpy as np
 import argparse
 import models
 
@@ -17,7 +18,7 @@ PRED_OUTDIR = DATASET_PATH / 'pred'
 
 MODELS = {
     'rnn': models.rnn_model,
-    'neural': models.neural_network_model,
+    'neural': neural_network_model,
     'linear_svm': models.svm_model,
     'random_forest': models.random_forest_model,
     'sgd': models.sgd_model,

@@ -2,10 +2,6 @@ from glove import get_word_vectors
 import nltk
 
 
-nltk.download('punkt', quiet=True)
-nltk.download('averaged_perceptron_tagger', quiet=True)
-
-
 DEFAULT_TOKEN = ''
 
 
@@ -16,6 +12,8 @@ class Vocab():
 
 
 def gen_vocabulary(trees):
+    nltk.download('punkt', quiet=True)
+    nltk.download('averaged_perceptron_tagger', quiet=True)
     vocab = Vocab()
     vocab.tokens = [DEFAULT_TOKEN]
     vocab.tokens += [word.lower()

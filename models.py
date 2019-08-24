@@ -2,47 +2,19 @@ from sklearn import linear_model
 from sklearn.svm import LinearSVC, SVC
 from sklearn.ensemble import RandomForestClassifier, BaggingClassifier
 from sklearn.multiclass import OneVsRestClassifier
-from torch.autograd import Variable
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
 from relations_inventory import ind_toaction_map, action_to_ind_map
 from features import extract_features
 import numpy as np
-
-
-hidden_size = 128
-lr = 1e-4  # learning rate
-
-is_cuda = torch.cuda.is_available()
-
-if is_cuda:
-    device = torch.device("cuda")
-    print("GPU is available")
-else:
-    device = torch.device("cpu")
-    print("GPU not available, CPU used")
-
-
-class Network(nn.Module):
-
-    def __init__(self, n_features, hidden_size, num_classes):
-        super(Network, self).__init__()
-        self.fc1 = nn.Linear(n_features, hidden_size)
-        self.fc1.weight.data.fill_(1.0)
-        self.fc2 = nn.Linear(hidden_size, num_classes)
-        self.fc2.weight.data.fill_(1.0)
-
-    def forward(self, x):
-        x = F.relu(self.fc1(x))
-        return F.relu(self.fc2(x))
 
 
 def one_hot_encode(label, labels, action_to_ind_map=action_to_ind_map):
     vec = np.zeros(len(labels), dtype=np.float32)
     vec[np.where(labels == ind_toaction_map[label])] = 1.0
     return vec
+
 
 def add_padding(X, shape, one_hot=False, labels=None):
     arr = np.zeros(shape=shape)
@@ -60,6 +32,15 @@ def add_padding(X, shape, one_hot=False, labels=None):
 
 
 def rnn_model(trees, samples, vocab, tag_to_ind_map):
+    is_cuda = torch.cuda.is_available()
+
+    if is_cuda:
+        device = torch.device("cuda")
+        print("GPU is available")
+    else:
+        device = torch.device("cpu")
+        print("GPU not available, CPU used")
+
     unique_labels = np.unique([sample.action for sample in samples])
     max_seq_len = max(tree._root.span[1] for tree in trees)
     output_size = len(unique_labels)
@@ -160,36 +141,6 @@ def random_forest_model(trees, samples, vocab, tag_to_ind_map, verbose=0):
     X, y = extract_features(trees, samples, vocab, None, tag_to_ind_map)
     clf.fit(X, y)
     return clf
-
-
-def neural_network_model(trees, samples, vocab, tag_to_ind_map, iterations=200):
-    
-    num_classes = len(ind_toaction_map)
-
-    [x_vecs, _] = extract_features(trees, samples, vocab, 1, tag_to_ind_map)
-
-    print("num features {}, num classes {}".format(len(x_vecs[0]), num_classes))
-    print("Running neural model")
-
-    net = Network(len(x_vecs[0]), hidden_size, num_classes)
-    print(net)
-
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(net.parameters(), lr=lr, momentum=0.9)
-
-    for i in range(iterations):
-        [x_vecs, y_labels] = extract_features(trees, samples, vocab, 5000, tag_to_ind_map)
-        y_pred = net(Variable(torch.tensor(x_vecs, dtype=torch.float)))
-        loss = criterion(y_pred, Variable(torch.tensor(y_labels, dtype=torch.long)))
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-    return net
-
-
-def neural_net_predict(net, x_vecs):
-    return net(Variable(torch.tensor(x_vecs, dtype=torch.float)))
 
 
 def sgd_model(trees, samples, vocab, tag_to_ind_map, iterations=200, verbose=0):

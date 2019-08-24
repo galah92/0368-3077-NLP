@@ -3,7 +3,7 @@ from preprocess import Node, print_serial_file
 from evaluation import eval as evaluate
 from features import add_features_per_sample
 from train_data import Sample, genstate
-from models import neural_net_predict
+from neural_network import neural_net_predict
 from relations_inventory import ind_toaction_map
 import numpy as np
 import torch
@@ -90,7 +90,7 @@ def predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, t
     _, x_vecs = add_features_per_sample(sample, vocab, max_edus, tag_to_ind_map)
 
     if model_name == "rnn":
-        alter_action = 'REDUCE-NN-ELABORATION' #DEBUG ONLY
+        alter_action = 'REDUCE-NN-ELABORATION'  # DEBUG ONLY
     elif model_name == "neural":
         pred = neural_net_predict(model, x_vecs)
         action = ind_toaction_map[pred.argmax()]
@@ -98,21 +98,21 @@ def predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, t
         alter_action = ind_toaction_map[indices[-2]]
     elif model_name == 'multi_label':
         clf1, clf2, clf3 = model
-        
+
         if hasattr(clf1, "decision_function"):
-            pred1 = clf1.decision_function(np.array(x_vecs).reshape(1,-1))
+            pred1 = clf1.decision_function(np.array(x_vecs).reshape(1, -1))
         else:
-            pred1 = clf1.predict_proba(np.array(x_vecs).reshape(1,-1))
-        
+            pred1 = clf1.predict_proba(np.array(x_vecs).reshape(1, -1))
+
         if hasattr(clf2, "decision_function"):
-            pred2 = clf2.decision_function(np.array(x_vecs).reshape(1,-1))
+            pred2 = clf2.decision_function(np.array(x_vecs).reshape(1, -1))
         else:
-            pred2 = clf2.predict_proba(np.array(x_vecs).reshape(1,-1))
-        
+            pred2 = clf2.predict_proba(np.array(x_vecs).reshape(1, -1))
+
         if hasattr(clf3, "decision_function"):
-            pred3 = clf3.decision_function(np.array(x_vecs).reshape(1,-1))
+            pred3 = clf3.decision_function(np.array(x_vecs).reshape(1, -1))
         else:
-            pred3 = clf3.predict_proba(np.array(x_vecs).reshape(1,-1))
+            pred3 = clf3.predict_proba(np.array(x_vecs).reshape(1, -1))
 
         a1 = 'REDUCE'
         # fix the action if needed
@@ -120,10 +120,10 @@ def predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, t
         a3 = clf3.classes_[np.argmax(pred3)] if clf3.classes_[np.argmax(pred3)] != 'SHIFT' else clf3.classes_[np.argsort(pred3).squeeze()[-2]]
 
         if clf1.classes_[np.argmax(pred1)] == 'SHIFT':
-            action = 'SHIFT'            
-            alter_action = ('-').join([a1, a2,a3])
+            action = 'SHIFT'
+            alter_action = ('-').join(a1, a2, a3)
         else:
-            action = ('-').join([a1, a2,a3])
+            action = ('-').join(a1, a2, a3)
 
     else:
         if hasattr(model, "decision_function"):
