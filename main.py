@@ -17,28 +17,26 @@ PRED_OUTDIR = DATASET_PATH / 'pred'
 if __name__ == '__main__':
 
     model_name = 'sgd'  # ['rnn', 'neural', 'sgd', 'linear_svm', 'random_forest', multi_label]
-    baseline = False
 
     print('preprocessing..')
     trees = load_trees(TRAINING_DIR)
     vocab, tag_to_ind_map = gen_vocabulary(trees)
 
-    if not baseline:
-        print('training..')
-        samples, y_all = gen_train_data(trees)
-        if model_name == 'rnn':
-            model = models.rnn_model(trees, samples, vocab, tag_to_ind_map)
-        if model_name == 'neural':
-            model = models.neural_network_model(trees, samples, vocab, tag_to_ind_map)
-        elif model_name == 'linear_svm':
-            model = models.svm_model(trees, samples, vocab, tag_to_ind_map)
-        elif model_name == 'random_forest':
-            model = models.random_forest_model(trees, samples, vocab, tag_to_ind_map)
-        elif model_name == 'sgd':
-            model = models.sgd_model(trees, samples, vocab, tag_to_ind_map)
-        elif model_name == 'multi_label':
-            model = models.multilabel_model(trees, samples, vocab, tag_to_ind_map)
+    print('training..')
+    samples, y_all = gen_train_data(trees)
+    if model_name == 'rnn':
+        model = models.rnn_model(trees, samples, vocab, tag_to_ind_map)
+    if model_name == 'neural':
+        model = models.neural_network_model(trees, samples, vocab, tag_to_ind_map)
+    elif model_name == 'linear_svm':
+        model = models.svm_model(trees, samples, vocab, tag_to_ind_map)
+    elif model_name == 'random_forest':
+        model = models.random_forest_model(trees, samples, vocab, tag_to_ind_map)
+    elif model_name == 'sgd':
+        model = models.sgd_model(trees, samples, vocab, tag_to_ind_map)
+    elif model_name == 'multi_label':
+        model = models.multilabel_model(trees, samples, vocab, tag_to_ind_map)
 
     print('evaluate..')
     dev_trees = load_trees(DEV_TEST_DIR, DEV_TEST_GOLD_DIR)
-    parse_files(model_name, model, dev_trees, vocab, y_all, tag_to_ind_map, baseline, DEV_TEST_DIR, DEV_TEST_GOLD_DIR, PRED_OUTDIR)
+    parse_files(model_name, model, dev_trees, vocab, y_all, tag_to_ind_map, DEV_TEST_DIR, DEV_TEST_GOLD_DIR, PRED_OUTDIR)

@@ -25,7 +25,7 @@ class Transition():
         return s.upper()
 
 
-def parse_files(model_name, model, trees, vocab, y_all, tag_to_ind_map, baseline, infiles_dir, gold_files_dir, pred_outdir):
+def parse_files(model_name, model, trees, vocab, y_all, tag_to_ind_map, infiles_dir, gold_files_dir, pred_outdir):
     max_edus = max(tree._root.span[1] for tree in trees)
     pred_outdir.mkdir(exist_ok=True)
     for tree in tqdm(trees):
@@ -37,7 +37,7 @@ def parse_files(model_name, model, trees, vocab, y_all, tag_to_ind_map, baseline
     evaluate(gold_files_dir, pred_outdir)
 
 
-def parse_file(queue, stack, model_name, model, tree, vocab, max_edus, y_all, tag_to_ind_map, baseline):
+def parse_file(queue, stack, model_name, model, tree, vocab, max_edus, y_all, tag_to_ind_map):
     ## RNN ##
     # samples, _ = gen_train_data([tree])
     # x_vecs, _, sents_idx = extract_features([tree], samples, vocab, None, tag_to_ind_map, rnn=True)
@@ -53,10 +53,7 @@ def parse_file(queue, stack, model_name, model, tree, vocab, max_edus, y_all, ta
         node = Node()
         node.relation = 'SPAN'
 
-        if baseline:
-            transition = most_freq_baseline(queue, stack)
-        else:
-            transition = predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, y_all, tag_to_ind_map, leaf_ind)
+        transition = predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, y_all, tag_to_ind_map, leaf_ind)
 
         if transition.action == "shift":
             node = Node(relation='SPAN',
@@ -171,25 +168,3 @@ def gen_config(queue, stack, top_ind_in_queue):
     if queue:
         q_temp.append(top_ind_in_queue)
     return genstate(stack, q_temp)
-
-
-def most_freq_baseline(queue, stack):
-    transition = Transition()
-
-    if len(stack) < 2:
-        transition.action = "shift"
-    elif queue:
-        actions = ["shift", "reduce"]
-        ind = random.randint(0, 1)
-        transition.action = actions[ind]
-    else:
-        transition.action = "reduce"
-
-    if transition.action == "shift":
-        return transition
-
-    transition.relation = 'ELABORATION'
-    transition.nuclearity.append("Nucleus")
-    transition.nuclearity.append("Satellite")
-
-    return transition
