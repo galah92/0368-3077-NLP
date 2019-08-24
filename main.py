@@ -40,10 +40,9 @@ if __name__ == '__main__':
 
     print('preprocessing..')
     trees = load_trees(TRAINING_DIR)
-    vocab, tag_to_idx = gen_vocabulary(trees)
+    vocab = gen_vocabulary(trees)
     samples = gen_train_data(trees)
-    x_train, y_train, sents_idx = get_features(trees, samples,
-                                               vocab, tag_to_idx)
+    x_train, y_train, sents_idx = get_features(trees, samples, vocab)
 
     print('training..')
     model = MODELS[args.model](x_train, y_train,
@@ -53,5 +52,5 @@ if __name__ == '__main__':
 
     print('evaluate..')
     dev_trees = load_trees(DEV_TEST_DIR, DEV_TEST_GOLD_DIR)
-    parse_files(args.model, model, dev_trees, vocab, tag_to_idx,
+    parse_files(args.model, model, dev_trees, vocab,
                 DEV_TEST_DIR, DEV_TEST_GOLD_DIR, PRED_OUTDIR)

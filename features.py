@@ -3,17 +3,17 @@ from vocabulary import split_edu_to_tags, split_edu_to_tokens
 from vocabulary import get_tag_ind, DEFAULT_TOKEN
 
 
-def get_features(trees, samples, vocab, tag_to_idx):
+def get_features(trees, samples, vocab):
     # samples = samples[:150]  # debug
     max_edus = max(tree._root.span[1] for tree in trees)
-    x_train = [add_features_per_sample(sample, vocab, max_edus, tag_to_idx)[1]
+    x_train = [add_features_per_sample(sample, vocab, max_edus)[1]
                for sample in samples]
     y_train = [action_to_ind_map[sample.action] for sample in samples]
     sents_idx = [sample.tree._edu_to_sent_ind[sample.state[0]] for sample in samples]
     return x_train, y_train, sents_idx
 
 
-def add_features_per_sample(sample, vocab, max_edus, tag_to_idx):
+def add_features_per_sample(sample, vocab, max_edus):
     features = {}
     feat_names = []
     split_edus = []
@@ -41,7 +41,7 @@ def add_features_per_sample(sample, vocab, max_edus, tag_to_idx):
 
     for i in range(3):
         add_word_features(features, split_edus, feat_names[i], i)
-        add_tag_features(features, tags_edus, feat_names[i + 3], i, tag_to_idx)
+        add_tag_features(features, tags_edus, feat_names[i + 3], i)
         for n in [0, 1, 2, -1, -2]:
             features[f'EduWord{n}-State{i}'] = split_edus[i][n] if abs(n) < len(split_edus[i]) else ""
             features[f'EduTag{n}-State{i}'] = tags_edus[i][n] if abs(n) < len(split_edus[i]) else ""
@@ -49,10 +49,10 @@ def add_features_per_sample(sample, vocab, max_edus, tag_to_idx):
     feat_names = ['END-WORD-STACK1', 'END-WORD-STACK2', 'END-WORD-QUEUE1']
     add_word_features(features, split_edus, feat_names, -1)
     feat_names = ['END-TAG-STACK1', 'END-TAG-STACK2', 'END-TAG-QUEUE1']
-    add_tag_features(features, tags_edus, feat_names, -1, tag_to_idx)
+    add_tag_features(features, tags_edus, feat_names, -1)
     add_edu_features(features, tree, sample.state, split_edus, max_edus)
 
-    vecs = gen_vectorized_features(features, vocab, tag_to_idx)
+    vecs = gen_vectorized_features(features, vocab)
     return features, vecs
 
 
@@ -67,7 +67,7 @@ def add_word_features(features, split_edus, feat_names, word_loc):
                 features[feat] = words[word_loc]
 
 
-def add_tag_features(features, tags_edus, feat_names, tag_loc, tag_to_idx):
+def add_tag_features(features, tags_edus, feat_names, tag_loc):
     for i in range(len(tags_edus)):
         tags = tags_edus[i]
         feat = feat_names[i]
@@ -102,15 +102,15 @@ def add_edu_features(features, tree, edus_ind, split_edus, max_edus):
     features['SameSen-STACK1-STACK2'] = 1 if tree._edu_to_sent_ind[edus_ind[0]] == tree._edu_to_sent_ind[edus_ind[1]] else 0
 
 
-def gen_vectorized_features(features, vocab, tag_to_idx):
+def gen_vectorized_features(features, vocab):
     vecs = []
-    n_tags = len(tag_to_idx) - 1
+    n_tags = len(vocab.tag_to_idx) - 1
     for key, val in features.items():
         if 'word' in key.lower():
             word_ind = vocab.tokens.get(val.lower(), vocab.tokens[DEFAULT_TOKEN])
             vecs += [elem for elem in vocab.words[word_ind]]
         elif 'tag' in key.lower():
-            vecs += [get_tag_ind(tag_to_idx, val) / n_tags]
+            vecs += [get_tag_ind(vocab.tag_to_idx, val) / n_tags]
         else:
             vecs += [val]
     return vecs

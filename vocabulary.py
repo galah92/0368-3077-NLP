@@ -22,7 +22,8 @@ def gen_vocabulary(trees):
                      for word in nltk.word_tokenize(edu)]
     vocab.tokens = {word: i for i, word in enumerate(set(vocab.tokens))}
     vocab.words = get_word_vectors(vocab.tokens)
-    return vocab, build_tags_dict(trees)
+    vocab.tag_to_idx = build_tags_dict(trees)
+    return vocab
 
 
 def split_edu_to_tokens(tree, edu_ind):
