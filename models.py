@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from relations_inventory import ind_toaction_map
+from relations_inventory import ind_toaction_map, action_to_ind_map
 from features import extract_features
 import numpy as np
 
@@ -198,7 +198,7 @@ def sgd_model(trees, samples, vocab, tag_to_ind_map, n_jobs, iterations=200, sub
     clf.fit(X, y)
     return clf
 
-def multilabel_model(trees, samples, labels, vocab, tag_to_ind_map, n_jobs, subset_size=500, verbose=0):
+def multilabel_model(trees, samples, vocab, tag_to_ind_map, n_jobs, subset_size=500, verbose=0):
     n_estimators = 10
     clf_1 = BaggingClassifier(verbose=verbose, n_jobs=n_jobs)
     clf_2 = BaggingClassifier(verbose=verbose, n_jobs=n_jobs)
