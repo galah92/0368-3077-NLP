@@ -36,10 +36,10 @@ if __name__ == '__main__':
     vocab, tag_to_ind_map = gen_vocabulary(trees)
 
     print('training..')
-    samples, y_all = gen_train_data(trees)
+    samples = gen_train_data(trees)
     model = MODELS[args.model](trees, samples, vocab, tag_to_ind_map)
 
     print('evaluate..')
     dev_trees = load_trees(DEV_TEST_DIR, DEV_TEST_GOLD_DIR)
-    parse_files(args.model, model, dev_trees, vocab, y_all, tag_to_ind_map,
+    parse_files(args.model, model, dev_trees, vocab, tag_to_ind_map,
                 DEV_TEST_DIR, DEV_TEST_GOLD_DIR, PRED_OUTDIR)

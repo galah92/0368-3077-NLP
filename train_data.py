@@ -1,6 +1,4 @@
-from relations_inventory import action_to_ind_map
 import copy
-import numpy as np
 
 
 class Sample():
@@ -22,8 +20,7 @@ def gen_train_data(trees):
         for sample in tree_samples:
             sample.tree = tree
             samples.append(sample)
-    y_all = np.unique([action_to_ind_map[sample.action] for sample in samples])
-    return samples, y_all
+    return samples
 
 
 def gen_train_data_tree(node, stack, queue, samples):

@@ -1,12 +1,11 @@
 from collections import deque
 from preprocess import Node, print_serial_file
 from evaluation import eval as evaluate
-from features import add_features_per_sample, extract_features
-from train_data import Sample, genstate, gen_train_data
-from models import neural_net_predict, rnn_model, add_padding, rnn_predict
+from features import add_features_per_sample
+from train_data import Sample, genstate
+from models import neural_net_predict
 from relations_inventory import ind_toaction_map
 import numpy as np
-import random
 import torch
 from tqdm import tqdm
 
@@ -25,19 +24,19 @@ class Transition():
         return s.upper()
 
 
-def parse_files(model_name, model, trees, vocab, y_all, tag_to_ind_map, infiles_dir, gold_files_dir, pred_outdir):
+def parse_files(model_name, model, trees, vocab, tag_to_ind_map, infiles_dir, gold_files_dir, pred_outdir):
     max_edus = max(tree._root.span[1] for tree in trees)
     pred_outdir.mkdir(exist_ok=True)
     for tree in tqdm(trees):
         tree_file = list(infiles_dir.glob(f'{tree._fname}*.edus'))[0]
         queue = deque(line.strip() for line in tree_file.open())
         stack = deque()
-        root = parse_file(queue, stack, model_name, model, tree, vocab, max_edus, y_all, tag_to_ind_map)
+        root = parse_file(queue, stack, model_name, model, tree, vocab, max_edus, tag_to_ind_map)
         print_serial_file(pred_outdir / tree._fname, root)
     evaluate(gold_files_dir, pred_outdir)
 
 
-def parse_file(queue, stack, model_name, model, tree, vocab, max_edus, y_all, tag_to_ind_map):
+def parse_file(queue, stack, model_name, model, tree, vocab, max_edus, tag_to_ind_map):
     ## RNN ##
     # samples, _ = gen_train_data([tree])
     # x_vecs, _, sents_idx = extract_features([tree], samples, vocab, None, tag_to_ind_map, rnn=True)
@@ -53,7 +52,7 @@ def parse_file(queue, stack, model_name, model, tree, vocab, max_edus, y_all, ta
         node = Node()
         node.relation = 'SPAN'
 
-        transition = predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, y_all, tag_to_ind_map, leaf_ind)
+        transition = predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, tag_to_ind_map, leaf_ind)
 
         if transition.action == "shift":
             node = Node(relation='SPAN',
@@ -83,7 +82,7 @@ def parse_file(queue, stack, model_name, model, tree, vocab, max_edus, y_all, ta
     return stack.pop()
 
 
-def predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, y_all, tag_to_ind_map, top_ind_in_queue):
+def predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, tag_to_ind_map, top_ind_in_queue):
     transition = Transition()
     sample = Sample()
     sample.state = gen_config(queue, stack, top_ind_in_queue)
