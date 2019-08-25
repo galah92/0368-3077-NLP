@@ -31,7 +31,7 @@ class SGD(Model):
         self.clf.fit(x, y)
 
     def predict(self, x):
-        pred = self.clf.predict_proba(x)
+        pred = self.clf.decision_function(x)
         action = ACTIONS[self.clf.classes_[np.argmax(pred)]]
         alter_action = ACTIONS[self.clf.classes_[np.argsort(pred).squeeze()[-2]]]
         return action, alter_action
@@ -77,7 +77,7 @@ class MultiLabel(Model):
     def __init__(self, *args, **kwargs):
         self.clf1 = BaggingClassifier(n_jobs=-1)
         self.clf2 = BaggingClassifier(n_jobs=-1)
-        self.clf3 = SVC(kernel='rbf')
+        self.clf3 = SVC(kernel='rbf', probability=True)
         self.actions = kwargs['actions']
     
     def train(self, x, y):
@@ -110,18 +110,20 @@ class Neural(Model):
     class Network(nn.Module):
 
         def __init__(self, n_features, hidden_size, num_classes):
-            super().__init__(self)
+            super().__init__()
             self.fc1 = nn.Linear(n_features, hidden_size)
             self.fc1.weight.data.fill_(1.0)
             self.fc2 = nn.Linear(hidden_size, num_classes)
             self.fc2.weight.data.fill_(1.0)
 
         def forward(self, x):
-            x = nn.functional.relu(self.fc1(x))
-            return nn.functional.relu(self.fc2(x))
+            x = nn.functional.relu(self.fc1(x.float()))
+            return nn.functional.relu(self.fc2(x.float()))
 
     def __init__(self, *args, **kwargs):
-        self.net = Neural.Network(kwargs['n_features'], hidden_size=128, num_classes=len(ACTIONS))
+        self.net = Neural.Network(n_features=kwargs['n_features'],
+                                  hidden_size=128,
+                                  num_classes=len(ACTIONS))
         self.criterion = nn.CrossEntropyLoss()
         self.optimizer = torch.optim.SGD(self.net.parameters(), lr=1e-4, momentum=0.9)
         self.num_iters = 200
@@ -136,7 +138,7 @@ class Neural(Model):
             self.optimizer.step()
 
     def predict(self, x):
-        pred = self.net(torch.autograd.Variable(torch.tensor(x)))
+        pred = self.net(torch.autograd.Variable(torch.tensor(x.squeeze())))
         action = ACTIONS[pred.argmax()]
         _, indices = torch.sort(pred)
         alter_action = ACTIONS[indices[-2]]
@@ -148,7 +150,7 @@ class RNN(Model):
     class Network(nn.Module):
 
         def __init__(self, input_size, output_size, hidden_dim, n_layers, unique_labels, max_seq_len):
-            super().__init__(self)
+            super().__init__()
             self.hidden_dim = hidden_dim
             self.n_layers = n_layers
             self.rnn = nn.RNN(input_size, hidden_dim, n_layers, batch_first=True)

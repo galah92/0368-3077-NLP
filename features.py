@@ -2,7 +2,7 @@ from relations import ACTIONS
 
 
 def get_features(trees, samples, vocab):
-    # samples = samples[:150]  # debug
+    samples = samples[:150]  # debug
     max_edus = max(tree._root.span[1] for tree in trees)
     x_train = [add_features_per_sample(sample, vocab, max_edus)[1]
                for sample in samples]
