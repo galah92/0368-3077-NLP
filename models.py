@@ -78,12 +78,11 @@ class MultiLabel(Model):
         self.clf1 = BaggingClassifier(n_jobs=-1)
         self.clf2 = BaggingClassifier(n_jobs=-1)
         self.clf3 = SVC(kernel='rbf', probability=True)
-        self.actions = kwargs['actions']
     
     def train(self, x, y):
-        y1 = np.array([self.actions[i].split('-')[0] for i in y])
-        y2 = np.array([self.actions[i].split('-')[1] if self.actions[i] != 'SHIFT' else 'SHIFT' for i in y])
-        y3 = np.array([self.actions[i].split('-')[2] if self.actions[i] != 'SHIFT' else 'SHIFT' for i in y])
+        y1 = np.array([ACTIONS[i].split('-')[0] for i in y])
+        y2 = np.array([ACTIONS[i].split('-')[1] if ACTIONS[i] != 'SHIFT' else 'SHIFT' for i in y])
+        y3 = np.array([ACTIONS[i].split('-')[2] if ACTIONS[i] != 'SHIFT' else 'SHIFT' for i in y])
         self.clf1.fit(x, y1)
         self.clf2.fit(x, y2)
         self.clf3.fit(x, y3)
