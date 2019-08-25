@@ -12,10 +12,10 @@ class Sample():
 def gen_train_data(trees):
     samples = []
     for tree in trees:
-        root = tree._root
+        root = tree.root
         stack = []
         tree_samples = []
-        queue = list(range(tree._root.span[1], 0, -1))  # queue of EDUS indices
+        queue = list(range(tree.root.span[1], 0, -1))  # queue of EDUS indices
         gen_train_data_tree(root, stack, queue, tree_samples)
         tree._samples = copy.copy(tree_samples)
         for sample in tree_samples:

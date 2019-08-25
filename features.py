@@ -3,11 +3,11 @@ from relations import ACTIONS
 
 def get_features(trees, samples, vocab):
     # samples = samples[:150]  # debug
-    max_edus = max(tree._root.span[1] for tree in trees)
+    max_edus = max(tree.root.span[1] for tree in trees)
     x_train = [add_features_per_sample(sample, vocab, max_edus)[1]
                for sample in samples]
     y_train = [ACTIONS.index(sample.action) for sample in samples]
-    sents_idx = [sample.tree._edu_to_sent_ind[sample.state[0]] for sample in samples]
+    sents_idx = [sample.tree.sents_idx[sample.state[0]] for sample in samples]
     return x_train, y_train, sents_idx
 
 
@@ -20,8 +20,8 @@ def add_features_per_sample(sample, vocab, max_edus):
     for i in range(len(sample.state)):
         edu_ind = sample.state[i]
         if edu_ind > 0:
-            split_edus.append(split_edu_to_tokens(tree, edu_ind))
-            tags_edus.append(split_edu_to_tags(tree, edu_ind))
+            split_edus.append([word for word, _ in tree.pos_tags[edu_ind]])
+            tags_edus.append([tag for _, tag in tree.pos_tags[edu_ind]])
         else:
             split_edus.append([''])
             tags_edus.append([''])
@@ -77,37 +77,27 @@ def add_tag_features(features, tags_edus, feat_names, tag_loc):
 
 def add_edu_features(features, tree, edus_ind, split_edus, max_edus):
     feat_names = ['LEN-STACK1', 'LEN-STACK2', 'LEN-QUEUE1']
-    for i in range(0, 3):
+    for i in range(3):
         feat = feat_names[i]
         if edus_ind[i] > 0:
             features[feat] = len(split_edus[i]) / max_edus
         else:
-            features[feat] = 0 
+            features[feat] = 0
     edu_ind_in_tree = []
-    for i in range(0, 3):
+    for i in range(3):
         if edus_ind[i] > 0:
             edu_ind_in_tree.append(edus_ind[i]) 
         else:
             edu_ind_in_tree.append(0)
     features['DIST-FROM-START-STACK1'] = (edu_ind_in_tree[0] - 1.0) / max_edus
-    features['DIST-FROM-END-STACK1'] = (tree._root.span[1] - edu_ind_in_tree[0]) / max_edus
+    features['DIST-FROM-END-STACK1'] = (tree.root.span[1] - edu_ind_in_tree[0]) / max_edus
     features['DIST-FROM-START-STACK2'] = (edu_ind_in_tree[1] - 1.0) / max_edus
-    features['DIST-FROM-END-STACK2'] = (tree._root.span[1] - edu_ind_in_tree[1]) / max_edus
+    features['DIST-FROM-END-STACK2'] = (tree.root.span[1] - edu_ind_in_tree[1]) / max_edus
     features['DIST-FROM-START-QUEUE1'] = (edu_ind_in_tree[2] - 1.0) / max_edus
     features['DIST-STACK1-QUEUE1'] = (edu_ind_in_tree[2] - edu_ind_in_tree[0]) / max_edus
-    features['SpanSize'] = tree._root.span[1]-tree._root.span[0]
-    features['SameSen-STACK1-QUEUE1'] = 1 if tree._edu_to_sent_ind[edus_ind[0]] == tree._edu_to_sent_ind[edus_ind[2]] else 0
-    features['SameSen-STACK1-STACK2'] = 1 if tree._edu_to_sent_ind[edus_ind[0]] == tree._edu_to_sent_ind[edus_ind[1]] else 0
-
-
-def split_edu_to_tokens(tree, edu_ind):
-    word_tag_list = tree._edu_word_tag_table[edu_ind]
-    return [word for word, _ in word_tag_list]
-
-
-def split_edu_to_tags(tree, edu_ind):
-    word_tag_list = tree._edu_word_tag_table[edu_ind]
-    return [tag for _, tag in word_tag_list]
+    features['SpanSize'] = tree.root.span[1]-tree.root.span[0]
+    features['SameSen-STACK1-QUEUE1'] = 1 if tree.sents_idx[edus_ind[0]] == tree.sents_idx[edus_ind[2]] else 0
+    features['SameSen-STACK1-STACK2'] = 1 if tree.sents_idx[edus_ind[0]] == tree.sents_idx[edus_ind[1]] else 0
 
 
 def vectorize_features(features, vocab):

@@ -16,7 +16,7 @@ class Model(ABC):
     @abstractmethod
     def train(self, x, y):
         pass
-    
+
     @abstractmethod
     def predict(self, x):
         pass
@@ -41,7 +41,7 @@ class SVM(Model):
 
     def __init__(self, *args, **kwargs):
         self.clf = LinearSVC(penalty='l1', dual=False, tol=1e-7)
-    
+
     def train(self, x, y):
         self.clf.fit(x, y)
 
@@ -61,7 +61,7 @@ class RandomForest(Model):
                                      max_samples=1.0 / n_estimators,
                                      n_estimators=n_estimators,
                                      n_jobs=-1)
-    
+
     def train(self, x, y):
         self.clf.fit(x, y)
 
@@ -78,7 +78,7 @@ class MultiLabel(Model):
         self.clf1 = BaggingClassifier(n_jobs=-1)
         self.clf2 = BaggingClassifier(n_jobs=-1)
         self.clf3 = SVC(kernel='rbf', probability=True)
-    
+
     def train(self, x, y):
         y1 = np.array([ACTIONS[i].split('-')[0] for i in y])
         y2 = np.array([ACTIONS[i].split('-')[1] if ACTIONS[i] != 'SHIFT' else 'SHIFT' for i in y])
@@ -180,7 +180,7 @@ class RNN(Model):
             print('GPU not available, CPU used')
 
         self.unique_labels = np.unique([sample.action for sample in kwargs['samples']])
-        self.max_seq_len = max(tree._root.span[1] for tree in kwargs['trees'])
+        self.max_seq_len = max(tree.root.span[1] for tree in kwargs['trees'])
         self.input_size = kwargs['n_features']
         self.output_size = len(self.unique_labels)
         self.net = RNN.Network(input_size=kwargs['n_features'], output_size=self.output_size,
@@ -191,7 +191,7 @@ class RNN(Model):
         self.criterion = nn.CrossEntropyLoss()
         self.optimizer = torch.optim.Adam(self.net.parameters(), lr=0.01)
 
-        self.sents_idx = kwargs['self.sents_idx']
+        self.sents_idx = kwargs['sents_idx']
 
     def train(self, x, y):
         batch_size = self.sents_idx.count('')

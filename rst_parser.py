@@ -3,10 +3,8 @@ from preprocess import Node
 from evaluation import eval as evaluate
 from features import add_features_per_sample
 from train_data import Sample, genstate
-from relations import ACTIONS
 from tqdm import tqdm
 import numpy as np
-import torch
 
 
 class Transition():
@@ -24,14 +22,14 @@ class Transition():
 
 
 def parse_files(model_name, model, trees, vocab, infiles_dir, gold_files_dir, pred_outdir):
-    max_edus = max(tree._root.span[1] for tree in trees)
+    max_edus = max(tree.root.span[1] for tree in trees)
     pred_outdir.mkdir(exist_ok=True)
     for tree in tqdm(trees):
-        tree_file = list(infiles_dir.glob(f'{tree._fname}*.edus'))[0]
+        tree_file = list(infiles_dir.glob(f'{tree.filename}*.edus'))[0]
         queue = deque(line.strip() for line in tree_file.open())
         stack = deque()
         root = parse_file(queue, stack, model_name, model, tree, vocab, max_edus)
-        root.to_file(pred_outdir / tree._fname)
+        root.to_file(pred_outdir / tree.filename)
     evaluate(gold_files_dir, pred_outdir)
 
 

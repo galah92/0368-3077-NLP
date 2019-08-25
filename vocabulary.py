@@ -13,7 +13,7 @@ class Vocabulary():
         self.tokens = [Vocabulary.DEFAULT_TOKEN]
         self.tokens += [word.lower()
                         for tree in trees
-                        for edu in tree._EDUS_table
+                        for edu in tree.edus
                         for word in nltk.word_tokenize(edu)]
         self.tokens = {word: i for i, word in enumerate(set(self.tokens))}
         self.words = self._get_word_vectors(self.tokens)
@@ -23,7 +23,7 @@ class Vocabulary():
         tag_to_idx = {'': 0}
         tag_ind = 1
         for tree in trees:
-            for word_tag_list in tree._edu_word_tag_table[1:]:
+            for word_tag_list in tree.pos_tags[1:]:
                 for _, tag in word_tag_list:
                     if tag_to_idx.get(tag, None) is None:
                         tag_to_idx[tag] = tag_ind
