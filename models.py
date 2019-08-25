@@ -141,3 +141,102 @@ class Neural(Model):
         _, indices = torch.sort(pred)
         alter_action = ACTIONS[indices[-2]]
         return action, alter_action
+
+
+class RNN(Model):
+
+    class Network(nn.Module):
+
+        def __init__(self, input_size, output_size, hidden_dim, n_layers, unique_labels, max_seq_len):
+            super().__init__(self)
+            self.hidden_dim = hidden_dim
+            self.n_layers = n_layers
+            self.rnn = nn.RNN(input_size, hidden_dim, n_layers, batch_first=True)
+            self.fc = nn.Linear(hidden_dim, output_size)
+            self.input_size = input_size
+            self.output_size = output_size
+            self.unique_labels = unique_labels
+            self.max_seq_len = max_seq_len
+
+        def forward(self, x):
+            batch_size = x.size(0)
+            hidden = self.init_hidden(batch_size)
+            out, hidden = self.rnn(x, hidden)
+            out = out.contiguous().view(-1, self.hidden_dim)
+            out = self.fc(out)
+            return out, hidden
+
+        def init_hidden(self, batch_size):
+            hidden = torch.zeros(self.n_layers, batch_size, self.hidden_dim).to(device)
+            return hidden
+
+    def __init__(self, *args, **kwargs):
+        if torch.cuda.is_available():
+            self.device = torch.device('cuda')
+            print('GPU is available')
+        else:
+            self.device = torch.device('cpu')
+            print('GPU not available, CPU used')
+
+        self.unique_labels = np.unique([sample.action for sample in kwargs['samples']])
+        self.max_seq_len = max(tree._root.span[1] for tree in kwargs['trees'])
+        self.input_size = kwargs['n_features']
+        self.output_size = len(self.unique_labels)
+        self.net = RNN.Network(input_size=kwargs['n_features'], output_size=self.output_size,
+                               hidden_dim=256, n_layers=2, unique_labels=self.unique_labels,
+                               max_seq_len=self.max_seq_len)
+        self.net.to(self.device)
+
+        self.criterion = nn.CrossEntropyLoss()
+        self.optimizer = torch.optim.Adam(self.net.parameters(), lr=0.01)
+
+        self.sents_idx = kwargs['self.sents_idx']
+
+    def train(self, x, y):
+        batch_size = self.sents_idx.count('')
+        input_seq = np.zeros((batch_size, self.max_seq_len, self.input_size))
+        target_seq = np.zeros((batch_size, self.max_seq_len, self.output_size))
+        old_idx = 0
+        j = -1
+        for idx in range(len(y)):
+            if self.sents_idx[idx] == '':
+                j += 1
+                input_seq[j] = self._add_padding(x[old_idx:idx], shape=(self.max_seq_len, self.input_size))
+                target_seq[j] = self._add_padding(y[old_idx:idx], shape=(self.max_seq_len, self.output_size), one_hot=True, labels=self.unique_labels)
+                old_idx = idx
+        input_seq = torch.from_numpy(input_seq)
+        target_seq = torch.Tensor(target_seq)
+        n_epochs = 100
+        for epoch in range(n_epochs):
+            self.optimizer.zero_grad()
+            input_seq = input_seq.to(self.device)
+            output = self.net(input_seq)
+            loss = self.criterion(output, np.argmax(target_seq, axis=2).view(-1).long())
+            loss.backward()
+            self.optimizer.step()
+            if epoch % 10 == 0:
+                print(f'Epoch: {epoch + 1}/{n_epochs}.............', end=' ')
+                print(f'Loss: {loss.item():.4f}')
+
+    def _add_padding(self, x, shape, one_hot=False, labels=None):
+        arr = np.zeros(shape=shape)
+        x_len = len(x)
+        for i in range(shape[0]):
+            if i < x_len:
+                if one_hot:
+                    arr[i] = self._one_hot_encode(x[i], labels)
+                else:
+                    arr[i] = x[i]
+        return arr
+
+    def _one_hot_encode(self, label, labels):
+        vec = np.zeros(len(labels), dtype=np.float32)
+        vec[np.where(labels == ACTIONS[label])] = 1.0
+        return vec
+
+    def predict(self, x):
+        pred = self.net(torch.autograd.Variable(torch.tensor(x)))
+        action = ACTIONS[pred.argmax()]
+        _, indices = torch.sort(pred)
+        alter_action = ACTIONS[indices[-2]]
+        return action, alter_action
