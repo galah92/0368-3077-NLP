@@ -45,5 +45,5 @@ if __name__ == '__main__':
 
     print('evaluate..')
     dev_trees = load_trees(DEV_TEST_DIR, DEV_TEST_GOLD_DIR)
-    parse_files(model, dev_trees, vocab,
+    parse_files(args.model, model, dev_trees, vocab,
                 DEV_TEST_DIR, DEV_TEST_GOLD_DIR, PRED_OUTDIR)

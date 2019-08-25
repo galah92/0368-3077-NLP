@@ -55,7 +55,9 @@ def genaction(parent, child):
 
 
 def genstate(stack, queue):
-    ind1, ind2, ind3 = 0, 0, 0
+    ind1 = 0
+    ind2 = 0
+    ind3 = 0
     if len(queue) > 0:
         ind3 = queue[-1]
     if len(stack) > 0:
