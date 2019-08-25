@@ -1,6 +1,5 @@
 from relations_inventory import action_to_ind_map
-from vocabulary import split_edu_to_tags, split_edu_to_tokens
-from vocabulary import get_tag_ind, DEFAULT_TOKEN
+from vocabulary import split_edu_to_tags, split_edu_to_tokens, DEFAULT_TOKEN
 
 
 def get_features(trees, samples, vocab):
@@ -110,7 +109,7 @@ def gen_vectorized_features(features, vocab):
             word_ind = vocab.tokens.get(val.lower(), vocab.tokens[DEFAULT_TOKEN])
             vecs += [elem for elem in vocab.words[word_ind]]
         elif 'tag' in key.lower():
-            vecs += [get_tag_ind(vocab.tag_to_idx, val) / n_tags]
+            vecs += [vocab.tag_to_idx[val] / n_tags]
         else:
             vecs += [val]
     return vecs

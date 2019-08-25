@@ -34,14 +34,6 @@ def split_edu_to_tags(tree, edu_ind):
     return [tag for _, tag in word_tag_list]
 
 
-def get_tag_ind(tag_to_idx, tag, use_def_tag=False):
-    if tag not in tag_to_idx:
-        if not use_def_tag:
-            raise Exception(f'Could not find tag: {tag}')
-        return tag_to_idx['']  # empty string treated as default tag
-    return tag_to_idx[tag]
-
-
 def build_tags_dict(trees):
     tag_to_idx = {'': 0}
     tag_ind = 1
