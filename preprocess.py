@@ -27,6 +27,8 @@ class TreeInfo():
 
 
 def load_trees(dis_dir, ser_files_dir=''):
+    nltk.download('punkt', quiet=True)
+    nltk.download('averaged_perceptron_tagger', quiet=True)
     trees = [binarize_file(dis_file) for dis_file in dis_dir.glob('*.dis')]
     if ser_files_dir != '':
         print_serial_files(trees, ser_files_dir)

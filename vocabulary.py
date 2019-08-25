@@ -12,8 +12,6 @@ class Vocab():
 
 
 def gen_vocabulary(trees):
-    nltk.download('punkt', quiet=True)
-    nltk.download('averaged_perceptron_tagger', quiet=True)
     vocab = Vocab()
     vocab.tokens = [DEFAULT_TOKEN]
     vocab.tokens += [word.lower()
