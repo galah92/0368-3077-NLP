@@ -4,18 +4,16 @@ from relations import ACTIONS
 def get_features(trees, samples, vocab):
     # samples = samples[:150]  # debug
     max_edus = max(tree._root.span[1] for tree in trees)
-    x_train = [add_features_per_sample(sample, vocab, max_edus)[1]
+    x_train = [get_features_for_sample(sample, vocab, max_edus)[1]
                for sample in samples]
     y_train = [ACTIONS.index(sample.action) for sample in samples]
     sents_idx = [sample.tree._edu_to_sent_ind[sample.state[0]] for sample in samples]
     return x_train, y_train, sents_idx
 
 
-def add_features_per_sample(sample, vocab, max_edus):
+def get_features_for_sample(sample, vocab, max_edus):
     features = {}
-    feat_names = []
-    split_edus = []
-    tags_edus = []
+    feat_names, split_edus, tags_edus = [], [], []
     tree = sample.tree
     for i in range(len(sample.state)):
         edu_ind = sample.state[i]
@@ -77,14 +75,14 @@ def add_tag_features(features, tags_edus, feat_names, tag_loc):
 
 def add_edu_features(features, tree, edus_ind, split_edus, max_edus):
     feat_names = ['LEN-STACK1', 'LEN-STACK2', 'LEN-QUEUE1']
-    for i in range(0, 3):
+    for i in range(3):
         feat = feat_names[i]
         if edus_ind[i] > 0:
             features[feat] = len(split_edus[i]) / max_edus
         else:
             features[feat] = 0 
     edu_ind_in_tree = []
-    for i in range(0, 3):
+    for i in range(3):
         if edus_ind[i] > 0:
             edu_ind_in_tree.append(edus_ind[i]) 
         else:

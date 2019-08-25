@@ -1,7 +1,7 @@
 from collections import deque
 from preprocess import Node, print_serial_file
 from evaluation import eval as evaluate
-from features import add_features_per_sample
+from features import get_features_for_sample
 from train_data import Sample, genstate
 from relations import ACTIONS
 from tqdm import tqdm
@@ -11,10 +11,10 @@ import torch
 
 class Transition():
 
-    def __init__(self):
-        self.nuclearity = []  # <nuc>, <nuc>
-        self.relation = ''  # cluster relation
-        self.action = ''  # shift or 'reduce'
+    def __init__(self, action, nuclearity=None, relation=None):
+        self.action = action
+        self.nuclearity = nuclearity
+        self.relation = relation
 
     def gen_str(self):
         s = self.action
@@ -23,19 +23,19 @@ class Transition():
         return s.upper()
 
 
-def parse_files(model_name, model, trees, vocab, infiles_dir, gold_files_dir, pred_outdir):
+def parse_files(model, trees, vocab, infiles_dir, gold_files_dir, pred_outdir):
     max_edus = max(tree._root.span[1] for tree in trees)
     pred_outdir.mkdir(exist_ok=True)
     for tree in tqdm(trees):
         tree_file = list(infiles_dir.glob(f'{tree._fname}*.edus'))[0]
         queue = deque(line.strip() for line in tree_file.open())
         stack = deque()
-        root = parse_file(queue, stack, model_name, model, tree, vocab, max_edus)
+        root = parse_file(queue, stack, model, tree, vocab, max_edus)
         print_serial_file(pred_outdir / tree._fname, root)
     evaluate(gold_files_dir, pred_outdir)
 
 
-def parse_file(queue, stack, model_name, model, tree, vocab, max_edus):
+def parse_file(queue, stack, model, tree, vocab, max_edus):
     ## RNN ##
     # samples, _ = gen_train_data([tree])
     # x_vecs, _, sents_idx = get_features([tree], samples, vocab)
@@ -50,8 +50,7 @@ def parse_file(queue, stack, model_name, model, tree, vocab, max_edus):
     while queue or len(stack) != 1:
         node = Node()
         node.relation = 'SPAN'
-
-        transition = predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, leaf_ind)
+        transition = predict_transition(queue, stack, model, tree, vocab, max_edus, leaf_ind)
 
         if transition.action == 'shift':
             node = Node(relation='SPAN',
@@ -81,41 +80,28 @@ def parse_file(queue, stack, model_name, model, tree, vocab, max_edus):
     return stack.pop()
 
 
-def predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, top_ind_in_queue):
-    transition = Transition()
+NUCLARITIES = {'N': 'Nucleus', 'S': 'Satellite'}
+
+
+def predict_transition(queue, stack, model, tree, vocab, max_edus, top_ind_in_queue):
     sample = Sample()
     sample.state = gen_config(queue, stack, top_ind_in_queue)
     sample.tree = tree
-    _, x_vecs = add_features_per_sample(sample, vocab, max_edus)
+    _, x_vecs = get_features_for_sample(sample, vocab, max_edus)
     action, alter_action = model.predict(np.array(x_vecs).reshape(1, -1))
 
     # correct invalid action
-    if len(stack) < 2 and action != 'SHIFT':
+    if action != 'SHIFT' and len(stack) < 2:
         action = 'SHIFT'
-    elif (not queue) and action == 'SHIFT':
+    elif action == 'SHIFT' and not queue:
         action = alter_action
 
     if action == 'SHIFT':
-        transition.action = 'shift'	
+        return Transition(action='shift')
     else:
-        transition.action = 'reduce'
-
-        splitaction = action.split('-')
-        nuc = splitaction[1]
-        rel = splitaction[2]
-
-        if nuc == 'NS':
-            transition.nuclearity.append('Nucleus')
-            transition.nuclearity.append('Satellite')
-        elif nuc == 'SN':
-            transition.nuclearity.append('Satellite')
-            transition.nuclearity.append('Nucleus')
-        else:
-            transition.nuclearity.append('Nucleus')
-            transition.nuclearity.append('Nucleus')
-        transition.relation = rel
-
-    return transition
+        nuc, rel = action.split('-')
+        nuc = [NUCLARITIES[nuc[0]], NUCLARITIES[nuc[1]]]
+        return Transition(action='reduce', nuclearity=nuc, relation=rel)
 
 
 def gen_config(queue, stack, top_ind_in_queue):
