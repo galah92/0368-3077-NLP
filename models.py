@@ -4,6 +4,8 @@ from sklearn.ensemble import RandomForestClassifier, BaggingClassifier
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.linear_model import SGDClassifier
 from sklearn.svm import LinearSVC, SVC
+import torch.nn as nn
+import torch
 import numpy as np
 
 from abc import ABC, abstractmethod
@@ -100,4 +102,42 @@ class MultiLabel(Model):
         else:
             action = '-'.join([a1, a2, a3])
             alter_action = 'INVALID'
+        return action, alter_action
+
+
+class Neural(Model):
+
+    class Network(nn.Module):
+
+        def __init__(self, n_features, hidden_size, num_classes):
+            super().__init__(self)
+            self.fc1 = nn.Linear(n_features, hidden_size)
+            self.fc1.weight.data.fill_(1.0)
+            self.fc2 = nn.Linear(hidden_size, num_classes)
+            self.fc2.weight.data.fill_(1.0)
+
+        def forward(self, x):
+            x = nn.functional.relu(self.fc1(x))
+            return nn.functional.relu(self.fc2(x))
+
+    def __init__(self, *args, **kwargs):
+        self.net = Neural.Network(kwargs['n_features'], hidden_size=128, num_classes=len(ACTIONS))
+        self.criterion = nn.CrossEntropyLoss()
+        self.optimizer = torch.optim.SGD(self.net.parameters(), lr=1e-4, momentum=0.9)
+        self.num_iters = 200
+
+    def train(self, x, y):
+        for _ in range(self.num_iters):
+            y_pred = self.net(torch.autograd.Variable(torch.tensor(x)))
+            var = torch.autograd.Variable(torch.tensor(y))
+            loss = self.criterion(y_pred, var)
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
+
+    def predict(self, x):
+        pred = self.net(torch.autograd.Variable(torch.tensor(x)))
+        action = ACTIONS[pred.argmax()]
+        _, indices = torch.sort(pred)
+        alter_action = ACTIONS[indices[-2]]
         return action, alter_action

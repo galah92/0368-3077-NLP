@@ -48,7 +48,8 @@ if __name__ == '__main__':
                                trees=trees,
                                samples=samples,
                                sents_idx=sents_idx,
-                               actions=ACTIONS)
+                               actions=ACTIONS,
+                               n_features=len(x_train[0]))
 
     print('evaluate..')
     dev_trees = load_trees(DEV_TEST_DIR, DEV_TEST_GOLD_DIR)
