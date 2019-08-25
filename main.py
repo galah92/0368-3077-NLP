@@ -1,7 +1,7 @@
 from preprocess import load_trees
 from train_data import gen_train_data
 from rst_parser import parse_files
-from vocabulary import gen_vocabulary
+from vocabulary import Vocabulary
 from features import get_features
 
 from neural_network import neural_network
@@ -40,7 +40,7 @@ if __name__ == '__main__':
 
     print('preprocessing..')
     trees = load_trees(TRAINING_DIR)
-    vocab = gen_vocabulary(trees)
+    vocab = Vocabulary(trees)
     samples = gen_train_data(trees)
     x_train, y_train, sents_idx = get_features(trees, samples, vocab)
 

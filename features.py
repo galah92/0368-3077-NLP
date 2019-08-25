@@ -1,5 +1,5 @@
 from relations_inventory import action_to_ind_map
-from vocabulary import split_edu_to_tags, split_edu_to_tokens, DEFAULT_TOKEN
+from vocabulary import Vocabulary
 
 
 def get_features(trees, samples, vocab):
@@ -59,7 +59,7 @@ def add_word_features(features, split_edus, feat_names, word_loc):
     for i in range(len(split_edus)):
         words = split_edus[i]
         feat = feat_names[i]
-        features[feat] = DEFAULT_TOKEN
+        features[feat] = Vocabulary.DEFAULT_TOKEN
         if words != ['']:
             # last word or one of the first 3 words
             if word_loc < 0 or len(words) > word_loc:
@@ -101,12 +101,22 @@ def add_edu_features(features, tree, edus_ind, split_edus, max_edus):
     features['SameSen-STACK1-STACK2'] = 1 if tree._edu_to_sent_ind[edus_ind[0]] == tree._edu_to_sent_ind[edus_ind[1]] else 0
 
 
+def split_edu_to_tokens(tree, edu_ind):
+    word_tag_list = tree._edu_word_tag_table[edu_ind]
+    return [word for word, _ in word_tag_list]
+
+
+def split_edu_to_tags(tree, edu_ind):
+    word_tag_list = tree._edu_word_tag_table[edu_ind]
+    return [tag for _, tag in word_tag_list]
+
+
 def gen_vectorized_features(features, vocab):
     vecs = []
     n_tags = len(vocab.tag_to_idx) - 1
     for key, val in features.items():
         if 'word' in key.lower():
-            word_ind = vocab.tokens.get(val.lower(), vocab.tokens[DEFAULT_TOKEN])
+            word_ind = vocab.tokens.get(val.lower(), vocab.tokens[Vocabulary.DEFAULT_TOKEN])
             vecs += [elem for elem in vocab.words[word_ind]]
         elif 'tag' in key.lower():
             vecs += [vocab.tag_to_idx[val] / n_tags]
