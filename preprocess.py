@@ -14,6 +14,40 @@ class Node():
         self.span = span
         self.text = text
 
+    def binarize(self):
+        if not self.childs:
+            return
+        if len(self.childs) > 2:
+            stack = deque(self.childs)
+            while len(stack) > 2:
+                right = stack.pop()
+                left = stack.pop()
+                temp = copy.copy(left)
+                temp.childs = [left, right]
+                temp.span = [left.span[0], right.span[1]]
+                stack.append(temp)
+            right = stack.pop()
+            left = stack.pop()
+            self.childs = [left, right]
+        else:
+            left, right = self.childs
+        left.binarize()
+        right.binarize()
+
+    def _postorder(self, order=None):
+        if self.nuclearity == 'Root':
+            order = deque()
+        for child in self.childs:
+            child._postorder(order)
+        if self.nuclearity != 'Root':
+            order.append(self)
+        return order
+    
+    def to_file(self, file_path):
+        with file_path.open('w') as ofh:
+            ofh.writelines(f'{node.span[0]} {node.span[1]} {node.nuclearity[0]} {node.relation}\n'
+                           for node in self._postorder())
+
 
 class TreeInfo():
 
@@ -31,7 +65,9 @@ def load_trees(dis_dir, ser_files_dir=''):
     nltk.download('averaged_perceptron_tagger', quiet=True)
     trees = [binarize_file(dis_file) for dis_file in dis_dir.glob('*.dis')]
     if ser_files_dir != '':
-        print_serial_files(trees, ser_files_dir)
+        ser_files_dir.mkdir(exist_ok=True)
+        for tree in trees:
+            tree._root.to_file(ser_files_dir / tree._fname)
     for tree in trees:
         # populate tree._sents
         file_path = dis_dir / tree._fname
@@ -57,7 +93,7 @@ def load_trees(dis_dir, ser_files_dir=''):
 def binarize_file(dis_path):
     lines = [line.split('//')[0] for line in dis_path.open('r')]
     root = build_tree(lines[::-1])
-    binarize_tree(root)
+    root.binarize()
     tree_info = TreeInfo()
     tree_info._root = root
     tree_info._fname = dis_path.stem.split('.')[0]
@@ -114,49 +150,6 @@ def build_treechilds_iter(lines, stack):
         node = build_tree(lines, stack)
         stack[-1].childs.append(node)
     return stack.pop()
-
-
-def binarize_tree(node):
-    if not node.childs:
-        return
-    if len(node.childs) > 2:
-        stack = deque(node.childs)
-        while len(stack) > 2:
-            right = stack.pop()
-            left = stack.pop()
-            temp = copy.copy(left)
-            temp.childs = [left, right]
-            temp.span = [left.span[0], right.span[1]]
-            stack.append(temp)
-        right = stack.pop()
-        left = stack.pop()
-        node.childs = [left, right]
-    else:
-        left, right = node.childs
-    binarize_tree(left)
-    binarize_tree(right)
-
-
-def print_serial_files(trees, outdir):
-    outdir.mkdir(exist_ok=True)
-    for tree in trees:
-        print_serial_file(outdir / tree._fname, tree._root)
-
-
-def postorder(node, order=None):
-    if node.nuclearity == 'Root':
-        order = deque()
-    for child in node.childs:
-        postorder(child, order)
-    if node.nuclearity != 'Root':
-        order.append(node)
-    return order
-
-
-def print_serial_file(file_path, root):
-    with file_path.open('w') as ofh:
-        ofh.writelines(f'{node.span[0]} {node.span[1]} {node.nuclearity[0]} {node.relation}\n'
-                       for node in postorder(root))
 
 
 def sent_transform(string):

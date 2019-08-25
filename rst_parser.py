@@ -1,5 +1,5 @@
 from collections import deque
-from preprocess import Node, print_serial_file
+from preprocess import Node
 from evaluation import eval as evaluate
 from features import get_features_for_sample
 from train_data import Sample, genstate
@@ -31,7 +31,7 @@ def parse_files(model, trees, vocab, infiles_dir, gold_files_dir, pred_outdir):
         queue = deque(line.strip() for line in tree_file.open())
         stack = deque()
         root = parse_file(queue, stack, model, tree, vocab, max_edus)
-        print_serial_file(pred_outdir / tree._fname, root)
+        root.to_file(pred_outdir / tree._fname)
     evaluate(gold_files_dir, pred_outdir)
 
 
