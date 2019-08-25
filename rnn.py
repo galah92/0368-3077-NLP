@@ -1,4 +1,4 @@
-from relations_inventory import ind_toaction_map
+from relations import ACTIONS
 import numpy as np
 import torch.nn as nn
 import torch
@@ -14,7 +14,7 @@ else:
 
 def one_hot_encode(label, labels):
     vec = np.zeros(len(labels), dtype=np.float32)
-    vec[np.where(labels == ind_toaction_map[label])] = 1.0
+    vec[np.where(labels == ACTIONS[label])] = 1.0
     return vec
 
 
@@ -82,7 +82,7 @@ def rnn_predict(model, input):
     out, hidden = model(input)
     prob = nn.functional.softmax(out, dim=0).data
     idx = torch.max(prob, dim=-1)[1]
-    return [ind_toaction_map[i] for i in idx], hidden
+    return [ACTIONS[i] for i in idx], hidden
 
 
 class RnnModel(nn.Module):

@@ -3,6 +3,7 @@ from train_data import gen_train_data
 from rst_parser import parse_files
 from vocabulary import Vocabulary
 from features import get_features
+from relations import ACTIONS
 
 from neural_network import neural_network
 from random_forest import random_forest
@@ -12,11 +13,9 @@ from sgd import sgd
 from rnn import rnn
 
 from pathlib import Path
-import numpy as np
 import argparse
 
 
-np.random.seed(42)
 DATASET_PATH = Path('data')
 TRAINING_DIR = DATASET_PATH / 'TRAINING'
 DEV_TEST_DIR = DATASET_PATH / 'DEV'
@@ -48,7 +47,8 @@ if __name__ == '__main__':
     model = MODELS[args.model](x_train, y_train,
                                trees=trees,
                                samples=samples,
-                               sents_idx=sents_idx)
+                               sents_idx=sents_idx,
+                               actions=ACTIONS)
 
     print('evaluate..')
     dev_trees = load_trees(DEV_TEST_DIR, DEV_TEST_GOLD_DIR)

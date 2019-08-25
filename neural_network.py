@@ -1,4 +1,3 @@
-from relations_inventory import ind_toaction_map
 import torch.nn as nn
 import torch
 
@@ -18,12 +17,12 @@ class Network(nn.Module):
 
 
 def neural_network(x_train, y_train, num_iters=200, **kwargs):
-    num_classes = len(ind_toaction_map)
+    num_classes = len(kwargs['actions'])
     net = Network(len(x_train[0]), hidden_size=128, num_classes=num_classes)
     print(net)
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(net.parameters(), lr=1e-4, momentum=0.9)
-    for i in range(num_iters):
+    for _ in range(num_iters):
         y_pred = net(torch.autograd.Variable(torch.tensor(x_train)))
         var = torch.autograd.Variable(torch.tensor(y_train))
         loss = criterion(y_pred, var)

@@ -4,10 +4,10 @@ from evaluation import eval as evaluate
 from features import add_features_per_sample
 from train_data import Sample, genstate
 from neural_network import neural_net_predict
-from relations_inventory import ind_toaction_map
+from relations import ACTIONS
+from tqdm import tqdm
 import numpy as np
 import torch
-from tqdm import tqdm
 
 
 class Transition():
@@ -93,9 +93,9 @@ def predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, t
         alter_action = 'REDUCE-NN-ELABORATION'  # DEBUG ONLY
     elif model_name == "neural":
         pred = neural_net_predict(model, x_vecs)
-        action = ind_toaction_map[pred.argmax()]
+        action = ACTIONS[pred.argmax()]
         _, indices = torch.sort(pred)
-        alter_action = ind_toaction_map[indices[-2]]
+        alter_action = ACTIONS[indices[-2]]
     elif model_name == 'multi_label':
         clf1, clf2, clf3 = model
 
@@ -130,8 +130,8 @@ def predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, t
             pred = model.decision_function(np.array(x_vecs).reshape(1,-1))
         else:
             pred = model.predict_proba(np.array(x_vecs).reshape(1,-1))
-        action = ind_toaction_map[model.classes_[np.argmax(pred)]]
-        alter_action = ind_toaction_map[model.classes_[np.argsort(pred).squeeze()[-2]]]
+        action = ACTIONS[model.classes_[np.argmax(pred)]]
+        alter_action = ACTIONS[model.classes_[np.argsort(pred).squeeze()[-2]]]
 
     # correct invalid action
     if len(stack) < 2 and action != "SHIFT":

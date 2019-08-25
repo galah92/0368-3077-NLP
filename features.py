@@ -1,5 +1,4 @@
-from relations_inventory import action_to_ind_map
-from vocabulary import Vocabulary
+from relations import ACTIONS
 
 
 def get_features(trees, samples, vocab):
@@ -7,7 +6,7 @@ def get_features(trees, samples, vocab):
     max_edus = max(tree._root.span[1] for tree in trees)
     x_train = [add_features_per_sample(sample, vocab, max_edus)[1]
                for sample in samples]
-    y_train = [action_to_ind_map[sample.action] for sample in samples]
+    y_train = [ACTIONS.index(sample.action) for sample in samples]
     sents_idx = [sample.tree._edu_to_sent_ind[sample.state[0]] for sample in samples]
     return x_train, y_train, sents_idx
 
@@ -39,27 +38,27 @@ def add_features_per_sample(sample, vocab, max_edus):
     feat_names.append(['THIR-TAG-STACK1', 'THIR-TAG-STACK2', 'THIR-TAG-QUEUE1'])
 
     for i in range(3):
-        add_word_features(features, split_edus, feat_names[i], i)
+        add_word_features(vocab, features, split_edus, feat_names[i], i)
         add_tag_features(features, tags_edus, feat_names[i + 3], i)
         for n in [0, 1, 2, -1, -2]:
             features[f'EduWord{n}-State{i}'] = split_edus[i][n] if abs(n) < len(split_edus[i]) else ""
             features[f'EduTag{n}-State{i}'] = tags_edus[i][n] if abs(n) < len(split_edus[i]) else ""
 
     feat_names = ['END-WORD-STACK1', 'END-WORD-STACK2', 'END-WORD-QUEUE1']
-    add_word_features(features, split_edus, feat_names, -1)
+    add_word_features(vocab, features, split_edus, feat_names, -1)
     feat_names = ['END-TAG-STACK1', 'END-TAG-STACK2', 'END-TAG-QUEUE1']
     add_tag_features(features, tags_edus, feat_names, -1)
     add_edu_features(features, tree, sample.state, split_edus, max_edus)
 
-    vecs = gen_vectorized_features(features, vocab)
+    vecs = vectorize_features(features, vocab)
     return features, vecs
 
 
-def add_word_features(features, split_edus, feat_names, word_loc):
+def add_word_features(vocab, features, split_edus, feat_names, word_loc):
     for i in range(len(split_edus)):
         words = split_edus[i]
         feat = feat_names[i]
-        features[feat] = Vocabulary.DEFAULT_TOKEN
+        features[feat] = vocab.DEFAULT_TOKEN
         if words != ['']:
             # last word or one of the first 3 words
             if word_loc < 0 or len(words) > word_loc:
@@ -111,12 +110,12 @@ def split_edu_to_tags(tree, edu_ind):
     return [tag for _, tag in word_tag_list]
 
 
-def gen_vectorized_features(features, vocab):
+def vectorize_features(features, vocab):
     vecs = []
     n_tags = len(vocab.tag_to_idx) - 1
     for key, val in features.items():
         if 'word' in key.lower():
-            word_ind = vocab.tokens.get(val.lower(), vocab.tokens[Vocabulary.DEFAULT_TOKEN])
+            word_ind = vocab.tokens.get(val.lower(), vocab.tokens[vocab.DEFAULT_TOKEN])
             vecs += [elem for elem in vocab.words[word_ind]]
         elif 'tag' in key.lower():
             vecs += [vocab.tag_to_idx[val] / n_tags]
