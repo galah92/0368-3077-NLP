@@ -57,10 +57,7 @@ class RandomForest(Model):
     def __init__(self, *args, **kwargs):
         # TODO: [Eyal] add SelectFromModel for feature reduction.
         n_estimators = 100
-        self.clf = BaggingClassifier(RandomForestClassifier(n_estimators=n_estimators),
-                                     max_samples=1.0 / n_estimators,
-                                     n_estimators=n_estimators,
-                                     n_jobs=-1)
+        self.clf = RandomForestClassifier(n_estimators=n_estimators)
 
     def train(self, x, y):
         self.clf.fit(x, y)
