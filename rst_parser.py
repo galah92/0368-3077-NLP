@@ -1,8 +1,8 @@
 from collections import deque
 from preprocess import Node
 from evaluation import eval as evaluate
-from features import add_features_per_sample
-from train_data import Sample, genstate
+from features import add_features_per_sample, get_features
+from train_data import Sample, genstate, gen_train_data
 from tqdm import tqdm
 import numpy as np
 
@@ -34,22 +34,27 @@ def parse_files(model_name, model, trees, vocab, infiles_dir, gold_files_dir, pr
 
 
 def parse_file(queue, stack, model_name, model, tree, vocab, max_edus):
-    ## RNN ##
-    # samples, _ = gen_train_data([tree])
-    # x_vecs, _, sents_idx = get_features([tree], samples, vocab)
-    # batch_size = 1
-    # input_seq = np.zeros((batch_size, model.max_seq_len, model.input_size), dtype=np.float32)
-    # input_seq[0] = add_padding(x_vecs, shape=(model.max_seq_len, model.input_size))
-    # actions, _ = rnn_predict(model, input_seq)
-    # actions = actions#[:len(x_vecs)+1]
-    ######
+    # TODO: [Eyal] fix rnn model
+    if model_name == 'rnn':
+        ## RNN ##
+        samples = gen_train_data([tree])
+        x_vecs, _, sents_idx = get_features([tree], samples, vocab)
+        batch_size = 1
+        input_seq = np.zeros((batch_size, model.max_seq_len, model.input_size), dtype=np.float32)
+        input_seq[0] = model._add_padding(x_vecs, shape=(model.max_seq_len, model.input_size))
+        actions, alter_actions = model.predict(input_seq)
+        ######
 
+    i = 0
     leaf_ind = 1
     while queue or len(stack) != 1:
         node = Node()
         node.relation = 'SPAN'
 
-        transition = predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, leaf_ind)
+        if model_name == 'rnn':
+            transition = predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, leaf_ind, actions=(actions[i], alter_actions[i]))
+        else:
+            transition = predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, leaf_ind)
 
         if transition.action == 'shift':
             node = Node(relation='SPAN',
@@ -75,17 +80,21 @@ def parse_file(queue, stack, model_name, model, tree, vocab, max_edus):
                 node.nuclearity = 'Root'
             node.span = [l.span[0], r.span[1]]
         stack.append(node)
+        i += 1
 
     return stack.pop()
 
 
-def predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, top_ind_in_queue):
+def predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, top_ind_in_queue, actions=None):
     transition = Transition()
     sample = Sample()
     sample.state = gen_config(queue, stack, top_ind_in_queue)
     sample.tree = tree
     _, x_vecs = add_features_per_sample(sample, vocab, max_edus)
-    action, alter_action = model.predict(np.array(x_vecs).reshape(1, -1))
+    if model_name == 'rnn':
+        action, alter_action = actions
+    else:
+        action, alter_action = model.predict(np.array(x_vecs).reshape(1, -1))
 
     # correct invalid action
     if len(stack) < 2 and action != 'SHIFT':

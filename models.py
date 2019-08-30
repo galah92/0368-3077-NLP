@@ -77,7 +77,7 @@ class MultiLabel(Model):
     def __init__(self, *args, **kwargs):
         self.clf1 = BaggingClassifier(n_jobs=-1)
         self.clf2 = BaggingClassifier(n_jobs=-1)
-        self.clf3 = SVC(kernel='rbf', probability=True)
+        self.clf3 = BaggingClassifier(n_jobs=-1)
 
     def train(self, x, y):
         y1 = np.array([ACTIONS[i].split('-')[0] for i in y])
@@ -150,6 +150,13 @@ class RNN(Model):
 
         def __init__(self, input_size, output_size, hidden_dim, n_layers, unique_labels, max_seq_len):
             super().__init__()
+            if torch.cuda.is_available():
+                self.device = torch.device('cuda')
+                print('GPU is available')
+            else:
+                self.device = torch.device('cpu')
+                print('GPU not available, CPU used')
+
             self.hidden_dim = hidden_dim
             self.n_layers = n_layers
             self.rnn = nn.RNN(input_size, hidden_dim, n_layers, batch_first=True)
@@ -168,25 +175,18 @@ class RNN(Model):
             return out, hidden
 
         def init_hidden(self, batch_size):
-            hidden = torch.zeros(self.n_layers, batch_size, self.hidden_dim).to(device)
+            hidden = torch.zeros(self.n_layers, batch_size, self.hidden_dim).to(self.device)
             return hidden
 
     def __init__(self, *args, **kwargs):
-        if torch.cuda.is_available():
-            self.device = torch.device('cuda')
-            print('GPU is available')
-        else:
-            self.device = torch.device('cpu')
-            print('GPU not available, CPU used')
-
         self.unique_labels = np.unique([sample.action for sample in kwargs['samples']])
-        self.max_seq_len = max(tree.root.span[1] for tree in kwargs['trees'])
+        self.max_seq_len = max(len(tree._samples) for tree in kwargs['trees'])
         self.input_size = kwargs['n_features']
         self.output_size = len(self.unique_labels)
         self.net = RNN.Network(input_size=kwargs['n_features'], output_size=self.output_size,
                                hidden_dim=256, n_layers=2, unique_labels=self.unique_labels,
                                max_seq_len=self.max_seq_len)
-        self.net.to(self.device)
+        self.net.to(self.net.device)
 
         self.criterion = nn.CrossEntropyLoss()
         self.optimizer = torch.optim.Adam(self.net.parameters(), lr=0.01)
@@ -195,8 +195,8 @@ class RNN(Model):
 
     def train(self, x, y):
         batch_size = self.sents_idx.count('')
-        input_seq = np.zeros((batch_size, self.max_seq_len, self.input_size))
-        target_seq = np.zeros((batch_size, self.max_seq_len, self.output_size))
+        input_seq = np.zeros((batch_size, self.max_seq_len, self.input_size), dtype=np.float32)
+        target_seq = np.zeros((batch_size, self.max_seq_len, self.output_size), dtype=np.float32)
         old_idx = 0
         j = -1
         for idx in range(len(y)):
@@ -210,9 +210,9 @@ class RNN(Model):
         n_epochs = 100
         for epoch in range(n_epochs):
             self.optimizer.zero_grad()
-            input_seq = input_seq.to(self.device)
-            output = self.net(input_seq)
-            loss = self.criterion(output, np.argmax(target_seq, axis=2).view(-1).long())
+            input_seq = input_seq.to(self.net.device)
+            output, hidden = self.net(input_seq)
+            loss = self.criterion(output, np.argmax(target_seq, axis=2).view(-1).long().to(self.net.device))
             loss.backward()
             self.optimizer.step()
             if epoch % 10 == 0:
@@ -236,8 +236,11 @@ class RNN(Model):
         return vec
 
     def predict(self, x):
-        pred = self.net(torch.autograd.Variable(torch.tensor(x)))
-        action = ACTIONS[pred.argmax()]
-        _, indices = torch.sort(pred)
-        alter_action = ACTIONS[indices[-2]]
-        return action, alter_action
+        pred, hidden = self.net(torch.autograd.Variable(torch.tensor(x).to(self.net.device)))
+        prob = nn.functional.softmax(pred, dim=0).data
+        actions_idx = torch.sort(prob, descending=True, dim=-1)[1][:,0]
+        alter_idx = torch.sort(prob, descending=True, dim=-1)[1][:,1]
+        actions = [self.net.unique_labels[i] for i in actions_idx]
+        alter_actions = [self.net.unique_labels[i] for i in alter_idx]
+        
+        return actions, alter_actions
