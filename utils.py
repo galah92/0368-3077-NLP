@@ -69,3 +69,6 @@ def map_to_cluster(relation):
                 'unknown cluster_relation type in label: {}'.format(relation))
 
     return cluster_relation
+
+def most_common(lst):
+            return max(set(lst), key=lst.count)

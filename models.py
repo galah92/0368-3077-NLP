@@ -7,6 +7,7 @@ from sklearn.svm import LinearSVC, SVC
 import torch.nn as nn
 import torch
 import numpy as np
+from utils import most_common
 
 from abc import ABC, abstractmethod
 
@@ -241,3 +242,24 @@ class RNN(Model):
         alter_actions = [self.net.unique_labels[i] for i in alter_idx]
         
         return actions, alter_actions
+
+class VoteModel(Model):
+    
+    def __init__(self, *args, **kwargs):
+        self.models = []
+        for model in kwargs['models']:
+            self.models.append(model(*args, **kwargs))
+            
+    def train(self, x, y):
+        for model in self.models:
+            model.train(x, y)
+
+    def predict(self, x):
+        actions = []
+        alter_actions = []
+        for model in self.models:
+            action, alter = model.predict(x)
+            actions.append(action)
+            alter_actions.append(alter)
+        
+        return most_common(actions), most_common(alter_actions)

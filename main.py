@@ -3,7 +3,7 @@ from train_data import gen_train_data
 from rst_parser import parse_files
 from vocabulary import Vocabulary
 from features import get_features
-from models import SGD, SVM, RandomForest, MultiLabel, Neural, RNN
+from models import SGD, SVM, RandomForest, MultiLabel, Neural, RNN, VoteModel
 
 from pathlib import Path
 import argparse
@@ -22,6 +22,7 @@ MODELS = {
     'multi_label': MultiLabel,
     'neural': Neural,
     'rnn': RNN,
+    'vote': VoteModel
 }
 
 
@@ -40,7 +41,8 @@ if __name__ == '__main__':
     model = MODELS[args.model](trees=trees,
                                samples=samples,
                                sents_idx=sents_idx,
-                               n_features=len(x_train[0]))
+                               n_features=len(x_train[0]),
+                               models=[SGD, MultiLabel, RandomForest])
     model.train(x_train, y_train)
 
     print('evaluate..')
