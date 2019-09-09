@@ -7,7 +7,7 @@ from sklearn.svm import LinearSVC, SVC
 import torch.nn as nn
 import torch
 import numpy as np
-from utils import most_common
+from utils import most_common, second_most_common
 
 from abc import ABC, abstractmethod
 
@@ -256,10 +256,9 @@ class VoteModel(Model):
 
     def predict(self, x):
         actions = []
-        alter_actions = []
         for model in self.models:
             action, alter = model.predict(x)
             actions.append(action)
-            alter_actions.append(alter)
+            actions.append(alter)
         
-        return most_common(actions), most_common(alter_actions)
+        return most_common(actions), second_most_common(actions)
