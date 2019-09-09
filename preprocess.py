@@ -49,6 +49,16 @@ class Node():
             ofh.writelines(f'{node.span[0]} {node.span[1]} {node.nuclearity[0]} {node.relation}\n'
                            for node in self._postorder())
 
+    def get_edu_ind(self):
+        if not self.childs:
+            return self.span[0]
+        left = self.childs[0]
+        right = self.childs[1]
+        if left.nuclearity == 'Nucleus':
+            return left.get_edu_ind()
+        return right.get_edu_ind()
+
+
 
 class TreeInfo():
 

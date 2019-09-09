@@ -2,7 +2,7 @@ from collections import deque
 from preprocess import Node
 from evaluation import eval as evaluate
 from features import add_features_per_sample, get_features
-from train_data import Sample, genstate, gen_train_data
+from train_data import Sample, get_state, get_samples
 from tqdm import tqdm
 import numpy as np
 
@@ -37,7 +37,7 @@ def parse_file(queue, stack, model_name, model, tree, vocab, max_edus):
     # TODO: [Eyal] fix rnn model
     if model_name == 'rnn':
         ## RNN ##
-        samples = gen_train_data([tree])
+        samples = get_samples([tree])
         x_vecs, _, sents_idx = get_features([tree], samples, vocab)
         batch_size = 1
         input_seq = np.zeros((batch_size, model.max_seq_len, model.input_size), dtype=np.float32)
@@ -103,7 +103,7 @@ def predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, t
         action = alter_action
 
     if action == 'SHIFT':
-        transition.action = 'shift'	
+        transition.action = 'shift'
     else:
         transition.action = 'reduce'
 
@@ -129,4 +129,4 @@ def gen_config(queue, stack, top_ind_in_queue):
     q_temp = []
     if queue:
         q_temp.append(top_ind_in_queue)
-    return genstate(stack, q_temp)
+    return get_state(stack, q_temp)

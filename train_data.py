@@ -1,3 +1,4 @@
+from collections import deque
 import copy
 
 
@@ -9,14 +10,14 @@ class Sample():
         self.tree = ''
 
 
-def gen_train_data(trees):
+def get_samples(trees):
     samples = []
     for tree in trees:
         root = tree.root
-        stack = []
+        stack = deque()
         tree_samples = []
-        queue = list(range(tree.root.span[1], 0, -1))  # queue of EDUS indices
-        gen_train_data_tree(root, stack, queue, tree_samples)
+        queue = deque(range(tree.root.span[1], 0, -1))  # queue of EDUS indices
+        get_samples_rec(root, stack, queue, tree_samples)
         tree._samples = copy.copy(tree_samples)
         for sample in tree_samples:
             sample.tree = tree
@@ -24,29 +25,26 @@ def gen_train_data(trees):
     return samples
 
 
-def gen_train_data_tree(node, stack, queue, samples):
+def get_samples_rec(node, stack, queue, samples):
     sample = Sample()
     if not node.childs:
         sample.action = 'SHIFT'
-        sample.state = genstate(stack, queue)
-        assert(queue.pop(-1) == node.span[0])
-        stack.append(node)
+        sample.state = get_state(stack, queue)
+        queue.pop()
     else:
-        l, r = node.childs
-        gen_train_data_tree(l, stack, queue, samples)
-        gen_train_data_tree(r, stack, queue, samples)
-        if r.nuclearity == 'Satellite':
-            sample.action = genaction(node, r)
-        else:
-            sample.action = genaction(node, l)
-        sample.state = genstate(stack, queue)
-        assert(stack.pop(-1) == node.childs[1])
-        assert(stack.pop(-1) == node.childs[0])
-        stack.append(node)
+        left, right = node.childs
+        get_samples_rec(left, stack, queue, samples)
+        get_samples_rec(right, stack, queue, samples)
+        child = right if right.nuclearity == 'Satellite' else left
+        sample.action = get_action(node, child)
+        sample.state = get_state(stack, queue)
+        stack.pop()
+        stack.pop()
+    stack.append(node)
     samples.append(sample)
 
 
-def genaction(parent, child):
+def get_action(parent, child):
     if child.nuclearity == 'Satellite':
         nuc = 'SN' if parent.childs[0] == child else 'NS'
     else:
@@ -54,24 +52,12 @@ def genaction(parent, child):
     return f'REDUCE-{nuc}-{child.relation}'
 
 
-def genstate(stack, queue):
-    ind1 = 0
-    ind2 = 0
-    ind3 = 0
+def get_state(stack, queue):
+    ind1, ind2, ind3 = 0, 0, 0
     if len(queue) > 0:
         ind3 = queue[-1]
     if len(stack) > 0:
-        ind1 = get_nuclear_edu_ind(stack[-1])  # right son
+        ind1 = stack[-1].get_edu_ind()  # right son
         if len(stack) > 1:
-            ind2 = get_nuclear_edu_ind(stack[-2])  # left son
+            ind2 = stack[-2].get_edu_ind()  # left son
     return ind1, ind2, ind3
-
-
-def get_nuclear_edu_ind(node):
-    if not node.childs:
-        return node.span[0]
-    left = node.childs[0]
-    right = node.childs[1]
-    if left.nuclearity == 'Nucleus':
-        return get_nuclear_edu_ind(left)
-    return get_nuclear_edu_ind(right)

@@ -1,5 +1,5 @@
 from preprocess import load_trees
-from train_data import gen_train_data
+from train_data import get_samples
 from rst_parser import parse_files
 from vocabulary import Vocabulary
 from features import get_features
@@ -19,7 +19,7 @@ MODELS = {
     'sgd': SGD,
     'svm': SVM,
     'random_forest': RandomForest,
-    'multi_label': MultiLabel,
+    'multilabel': MultiLabel,
     'neural': Neural,
     'rnn': RNN,
     'vote': VoteModel
@@ -34,7 +34,7 @@ if __name__ == '__main__':
     print('preprocessing..')
     trees = load_trees(TRAINING_DIR)
     vocab = Vocabulary(trees)
-    samples = gen_train_data(trees)
+    samples = get_samples(trees)
     x_train, y_train, sents_idx = get_features(trees, samples, vocab)
 
     print('training..')

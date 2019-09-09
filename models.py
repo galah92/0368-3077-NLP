@@ -1,13 +1,13 @@
 from relations import ACTIONS
+from utils import most_common, second_most_common
 
 from sklearn.ensemble import RandomForestClassifier, BaggingClassifier
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.linear_model import SGDClassifier
-from sklearn.svm import LinearSVC, SVC
+from sklearn.svm import LinearSVC
 import torch.nn as nn
 import torch
 import numpy as np
-from utils import most_common, second_most_common
 
 from abc import ABC, abstractmethod
 
@@ -240,16 +240,16 @@ class RNN(Model):
         alter_idx = torch.sort(prob, descending=True, dim=-1)[1][:,1]
         actions = [self.net.unique_labels[i] for i in actions_idx]
         alter_actions = [self.net.unique_labels[i] for i in alter_idx]
-        
         return actions, alter_actions
 
+
 class VoteModel(Model):
-    
+
     def __init__(self, *args, **kwargs):
         self.models = []
         for model in kwargs['models']:
             self.models.append(model(*args, **kwargs))
-            
+
     def train(self, x, y):
         for model in self.models:
             model.train(x, y)
@@ -260,5 +260,5 @@ class VoteModel(Model):
             action, alter = model.predict(x)
             actions.append(action)
             actions.append(alter)
-        
+
         return most_common(actions), second_most_common(actions)
