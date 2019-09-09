@@ -87,8 +87,7 @@ def parse_file(queue, stack, model_name, model, tree, vocab, max_edus):
 
 def predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, top_ind_in_queue, actions=None):
     transition = Transition()
-    sample = Sample()
-    sample.state = gen_config(queue, stack, top_ind_in_queue)
+    sample = Sample(state=gen_config(queue, stack, top_ind_in_queue))
     sample.tree = tree
     _, x_vecs = add_features_per_sample(sample, vocab, max_edus)
     if model_name == 'rnn':

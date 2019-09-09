@@ -4,8 +4,8 @@ import copy
 
 class Sample():
 
-    def __init__(self):
-        self.state = []  # [v1, v2, v3] where v1 & v2 are the elements at the top of the stack
+    def __init__(self, state):
+        self.state = state
         self.action = ''
         self.tree = ''
 
@@ -26,18 +26,16 @@ def get_samples(trees):
 
 
 def get_samples_rec(node, stack, queue, samples):
-    sample = Sample()
+    sample = Sample(get_state(stack, queue))
     if not node.childs:
         sample.action = 'SHIFT'
-        sample.state = get_state(stack, queue)
         queue.pop()
     else:
         left, right = node.childs
-        get_samples_rec(left, stack, queue, samples)
-        get_samples_rec(right, stack, queue, samples)
         child = right if right.nuclearity == 'Satellite' else left
         sample.action = get_action(node, child)
-        sample.state = get_state(stack, queue)
+        get_samples_rec(left, stack, queue, samples)
+        get_samples_rec(right, stack, queue, samples)
         stack.pop()
         stack.pop()
     stack.append(node)
