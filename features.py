@@ -24,12 +24,12 @@ def add_features_per_sample(sample, vocab, max_edus):
     for idx, state in enumerate(sample.state):
         add_word_features(vocab, features_dict, edus, features[idx], i)
         add_tag_features(features_dict, tags, features[idx + 3], i)
-        features_dict[f'QueueStackStatus{i}'] = 1 if state == 0 else 0
-        features_dict[f'LastTokenIsSeparator{i}'] = 1 if edus[idx][-1] in ['.', ',',';','"', "'"] else 0
+        features_dict[f'QueueStackStatus{idx}'] = 1 if state == 0 else 0
+        features_dict[f'LastTokenIsSeparator{idx}'] = 1 if edus[idx][-1] in ['.', ',',';','"', "'"] else 0
 
-        for n in [0, 1, 2, -1, -2]:
-            features_dict[f'EduWord{n}-State{i}'] = edus[idx][n] if abs(n) < len(edus[idx]) else ""
-            features_dict[f'EduTag{n}-State{i}'] = tags[idx][n] if abs(n) < len(edus[idx]) else ""
+        for n in [0, 1, 2, 3, -1, -2, -3]:
+            features_dict[f'EduWord{n}-State{idx}'] = edus[idx][n] if abs(n) < len(edus[idx]) else ""
+            features_dict[f'EduTag{n}-State{idx}'] = tags[idx][n] if abs(n) < len(edus[idx]) else ""
 
     features = ['END-WORD-STACK1', 'END-WORD-STACK2', 'END-WORD-QUEUE1']
     add_word_features(vocab, features_dict, edus, features, -1)
