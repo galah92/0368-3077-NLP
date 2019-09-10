@@ -34,8 +34,7 @@ if __name__ == '__main__':
 
     print('preprocessing')
     trees = load_trees(TRAINING_DIR)
-    vocab = Vocabulary(trees)
-    samples = get_samples(trees)
+    vocab, samples = Vocabulary(trees), get_samples(trees)
     x_train, y_train, sents_idx = get_features(trees, samples, vocab)
 
     print('training')

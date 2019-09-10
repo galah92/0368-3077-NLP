@@ -26,7 +26,7 @@ def get_samples(trees):
 
 
 def get_samples_rec(node, stack, queue, samples):
-    sample = Sample(get_state(stack, queue))
+    sample = Sample(state=get_state(stack, queue))
     if not node.childs:
         sample.action = 'SHIFT'
         queue.pop()
@@ -51,11 +51,7 @@ def get_action(parent, child):
 
 
 def get_state(stack, queue):
-    ind1, ind2, ind3 = 0, 0, 0
-    if len(queue) > 0:
-        ind3 = queue[-1]
-    if len(stack) > 0:
-        ind1 = stack[-1].get_edu_ind()  # right son
-        if len(stack) > 1:
-            ind2 = stack[-2].get_edu_ind()  # left son
+    ind1 = stack[-1].get_edu_ind() if stack else 0  # right son
+    ind2 = stack[-2].get_edu_ind() if len(stack) > 1 else 0  # left son
+    ind3 = queue[-1] if queue else 0
     return ind1, ind2, ind3

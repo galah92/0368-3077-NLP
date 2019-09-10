@@ -28,11 +28,11 @@ def parse_files(model, trees, vocab, infiles_dir, pred_outdir):
         tree_file = list(infiles_dir.glob(f'{tree.filename}*.edus'))[0]
         queue = deque(line.strip() for line in tree_file.open())
         stack = deque()
-        root = parse_file(queue, stack, model, tree, vocab, max_edus)
+        root = rst_parser(queue, stack, model, tree, vocab, max_edus)
         root.to_file(pred_outdir / tree.filename)
 
 
-def parse_file(queue, stack, model, tree, vocab, max_edus):
+def rst_parser(queue, stack, model, tree, vocab, max_edus):
     if isinstance(model, RNN):
         samples = get_samples([tree])
         x_vecs, _, sents_idx = get_features([tree], samples, vocab)
@@ -55,7 +55,7 @@ def parse_file(queue, stack, model, tree, vocab, max_edus):
         if transition.action == 'shift':
             node = Node(relation='SPAN',
                         text=queue.pop(),
-                        span=[leaf_ind, leaf_ind])
+                        span=(leaf_ind, leaf_ind))
             leaf_ind += 1
         else:
             r = stack.pop()
@@ -90,15 +90,13 @@ def predict(queue, stack, model, tree, vocab, max_edus, top_ind_in_queue, action
     state = get_state(stack, [top_ind_in_queue] if queue else [])
     sample = Sample(state=state, tree=tree)
     _, x_vecs = add_features_per_sample(sample, vocab, max_edus)
-    if isinstance(model, RNN):
-        action, alter_action = actions
-    else:
-        action, alter_action = model.predict(np.array(x_vecs).reshape(1, -1))
+    x = np.array(x_vecs).reshape(1, -1)
+    action, alter_action = actions if actions else model.predict(x)
 
     # correct invalid action
     if len(stack) < 2 and action != 'SHIFT':
         action = 'SHIFT'
-    elif (not queue) and action == 'SHIFT':
+    elif not queue and action == 'SHIFT':
         action = alter_action
 
     if action == 'SHIFT':
