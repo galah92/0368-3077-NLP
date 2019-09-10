@@ -1,5 +1,4 @@
 import re
-from collections import Counter
 
 
 def map_to_cluster(relation):
@@ -71,8 +70,10 @@ def map_to_cluster(relation):
 
     return cluster_relation
 
+
 def most_common(lst):
     return Counter(lst).most_common(1)[0][0]
+
 
 def second_most_common(lst):
     return Counter(lst).most_common(2)[1][0]

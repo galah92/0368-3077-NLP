@@ -1,20 +1,16 @@
+from collections import Counter
+from abc import ABC, abstractmethod
 from relations import ACTIONS
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier, BaggingClassifier, AdaBoostClassifier
+from sklearn.ensemble import RandomForestClassifier, BaggingClassifier
 from sklearn.multiclass import OneVsRestClassifier
-from sklearn.model_selection import GridSearchCV
-from sklearn.feature_selection import SelectFromModel
 from sklearn.linear_model import SGDClassifier
-from sklearn.svm import LinearSVC, SVC
+from sklearn.svm import LinearSVC
 from torch.utils.data import DataLoader
 from torch.utils.data import TensorDataset
-import torch.nn as nn
 from torch.autograd import Variable
+import torch.nn as nn
 import torch
 import numpy as np
-from utils import most_common, second_most_common
-
-from abc import ABC, abstractmethod
 
 
 class Model(ABC):
@@ -35,7 +31,7 @@ class SGD(Model):
 
     def train(self, x, y):
         self.clf.fit(x, y)
-        
+
     def predict(self, x):
         pred = self.clf.decision_function(x)
         action = ACTIONS[self.clf.classes_[np.argmax(pred)]]
@@ -81,7 +77,7 @@ class MultiLabel(Model):
         self.clf1 = BaggingClassifier(n_jobs=-1)
         self.clf2 = BaggingClassifier(n_jobs=-1)
         self.clf3 = BaggingClassifier(n_jobs=-1)
-        
+
     def train(self, x, y):
         y1 = np.array([ACTIONS[i].split('-')[0] for i in y])
         y2 = np.array([ACTIONS[i].split('-')[1] if ACTIONS[i] != 'SHIFT' else 'SHIFT' for i in y])
@@ -142,7 +138,7 @@ class Neural(Model):
         train = TensorDataset(torch.tensor(x), torch.tensor(y))
         for epoch in range(self.n_epochs):
             trainloader = DataLoader(train, batch_size=32, shuffle=True, num_workers=2)
-            
+
             for _, data in enumerate(trainloader, 0):
                 inputs, labels = data
                 inputs, labels = Variable(inputs.to(self.net.device)), Variable(labels.to(self.net.device))
@@ -262,25 +258,23 @@ class RNN(Model):
         alter_idx = torch.sort(prob, descending=True, dim=-1)[1][:,1]
         actions = [self.net.unique_labels[i] for i in actions_idx]
         alter_actions = [self.net.unique_labels[i] for i in alter_idx]
-        
+
         return actions, alter_actions
 
+
 class VoteModel(Model):
-    
+
     def __init__(self, *args, **kwargs):
-        self.models = []
-        for model in kwargs['models']:
-            self.models.append(model(*args, **kwargs))
-            
+        self.models = [model(*args, **kwargs) for model in kwargs['models']]
+
     def train(self, x, y):
         for model in self.models:
             model.train(x, y)
 
     def predict(self, x):
-        actions = []
-        for model in self.models:
-            action, alter = model.predict(x)
-            actions.append(action)
-            actions.append(alter)
-        
-        return most_common(actions), second_most_common(actions)
+        actions_freq = Counter(action
+                               for model in self.models
+                               for action in model.predict(x))
+        most_common_action = actions_freq.most_common(1)[0][0]
+        second_most_common_action = actions_freq.most_common(2)[1][0]
+        return most_common_action, second_most_common_action
