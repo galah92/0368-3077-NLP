@@ -30,7 +30,6 @@ MODELS = {
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(prog=__package__)
     parser.add_argument('--model', choices=MODELS.keys(), default='sgd')
-    parser.add_argument('--grid', default=1)
     args = parser.parse_args()
 
     print('preprocessing')
@@ -44,8 +43,7 @@ if __name__ == '__main__':
                                samples=samples,
                                sents_idx=sents_idx,
                                n_features=len(x_train[0]),
-                               models=[SGD, MultiLabel, RandomForest],
-                               grid=args.grid)
+                               models=[SGD, MultiLabel, RandomForest])
     model.train(x_train, y_train)
 
     print('evaluating')
