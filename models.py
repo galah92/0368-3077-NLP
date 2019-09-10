@@ -1,15 +1,18 @@
 from relations import ACTIONS
-from utils import most_common, second_most_common
-
+from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier, BaggingClassifier, AdaBoostClassifier
 from sklearn.multiclass import OneVsRestClassifier
+from sklearn.model_selection import GridSearchCV
+from sklearn.feature_selection import SelectFromModel
 from sklearn.linear_model import SGDClassifier
 from sklearn.svm import LinearSVC, SVC
-from sklearn.feature_selection import SelectFromModel
+from torch.utils.data import DataLoader
+from torch.utils.data import TensorDataset
 import torch.nn as nn
+from torch.autograd import Variable
 import torch
 import numpy as np
-from utils import most_common
+from utils import most_common, second_most_common
 
 from abc import ABC, abstractmethod
 
@@ -28,37 +31,11 @@ class Model(ABC):
 class SGD(Model):
 
     def __init__(self, *args, **kwargs):
-        if(kwargs['grid'] == 0):
-            self.clf = OneVsRestClassifier(SGDClassifier(alpha=0.005, penalty='l2', n_jobs=-1))
-            print("self.clf = OneVsRestClassifier(SGDClassifier(alpha=0.1, penalty='l2', n_jobs=-1))")
-        if(kwargs['grid'] == 1):
-            self.clf = OneVsRestClassifier(SGDClassifier(alpha=0.1, penalty='l2', n_jobs=-1))
-            print("self.clf = OneVsRestClassifier(SGDClassifier(alpha=0.1, penalty='l2', n_jobs=-1))")
-        if(kwargs['grid'] == 2):
-            self.clf = OneVsRestClassifier(SGDClassifier(alpha=0.1, penalty='l1', n_jobs=-1))
-            print("self.clf = OneVsRestClassifier(SGDClassifier(alpha=0.1, penalty='l1', n_jobs=-1")
-        if(kwargs['grid'] == 3):
-            self.clf = OneVsRestClassifier(SGDClassifier(alpha=0.001, penalty='l2', n_jobs=-1))
-            print("self.clf = OneVsRestClassifier(SGDClassifier(alpha=0.001, penalty='l2', n_jobs=-1))")
-        if(kwargs['grid'] == 4):
-            self.clf = OneVsRestClassifier(SGDClassifier(alpha=0.001, penalty='l1', n_jobs=-1))
-            print("self.clf = OneVsRestClassifier(SGDClassifier(alpha=0.001, penalty='l1', n_jobs=-1))")
-        if(kwargs['grid'] == 5):
-            self.clf = OneVsRestClassifier(SGDClassifier(alpha=10, penalty='l2', n_jobs=-1))
-            print("self.clf = OneVsRestClassifier(SGDClassifier(alpha=10, penalty='l2', n_jobs=-1))")
-        if(kwargs['grid'] == 6):
-            self.clf = OneVsRestClassifier(SGDClassifier(alpha=10, penalty='l1', n_jobs=-1))
-            print("self.clf = OneVsRestClassifier(SGDClassifier(alpha=10, penalty='l1', n_jobs=-1))")
-        if(kwargs['grid'] == 7):
-            self.clf = OneVsRestClassifier(SGDClassifier(alpha=0.0001, penalty='l2', n_jobs=-1))
-            print("self.clf = OneVsRestClassifier(SGDClassifier(alpha=0.0001, penalty='l2', n_jobs=-1))")
-        if(kwargs['grid'] == 8):
-            self.clf = OneVsRestClassifier(SGDClassifier(alpha=0.00005, penalty='l2', n_jobs=-1))
-            print("self.clf = OneVsRestClassifier(SGDClassifier(alpha=0.00005, penalty='l2', n_jobs=-1))")
+        self.clf = OneVsRestClassifier(SGDClassifier(alpha=0.1, penalty='l2', n_jobs=-1))
 
     def train(self, x, y):
         self.clf.fit(x, y)
-
+        
     def predict(self, x):
         pred = self.clf.decision_function(x)
         action = ACTIONS[self.clf.classes_[np.argmax(pred)]]
@@ -69,9 +46,7 @@ class SGD(Model):
 class SVM(Model):
 
     def __init__(self, *args, **kwargs):
-#         self.clf = LinearSVC(penalty='l1', dual=False, tol=1e-7)
-        self.clf = LinearSVC(penalty='l2', dual=False, tol=1e-5)
-
+        self.clf = BaggingClassifier(LinearSVC(penalty='l1', dual=False, tol=1e-7), n_jobs=-1)
 
     def train(self, x, y):
         self.clf.fit(x, y)
@@ -88,17 +63,7 @@ class RandomForest(Model):
     def __init__(self, *args, **kwargs):
         # TODO: [Eyal] add SelectFromModel for feature reduction.
         n_estimators = 100
-        if(kwargs['grid'] == 0):
-            self.clf = RandomForestClassifier(n_estimators=10, criterion='entropy')
-        if(kwargs['grid'] == 1):
-            self.clf = RandomForestClassifier(n_estimators=50)
-        if(kwargs['grid'] == 2):
-            self.clf = RandomForestClassifier(n_estimators=100)
-        if(kwargs['grid'] == 3):
-            self.clf = RandomForestClassifier(n_estimators=100, criterion='entropy')
-          
-#         self.clf = SelectFromModel(RandomForestClassifier(n_estimators=100), threshold='1.25*median')
-
+        self.clf = RandomForestClassifier(n_estimators=n_estimators)
 
     def train(self, x, y):
         self.clf.fit(x, y)
@@ -113,30 +78,10 @@ class RandomForest(Model):
 class MultiLabel(Model):
 
     def __init__(self, *args, **kwargs):
-        print("kwargs['grid'] ==", kwargs['grid'])
-        if (kwargs['grid'] == 1):
-            self.clf1 = BaggingClassifier(n_jobs=-1)
-            self.clf2 = BaggingClassifier(n_jobs=-1)
-            self.clf3 = BaggingClassifier(n_jobs=-1)
-        if (kwargs['grid'] == 2):
-            self.clf1 = BaggingClassifier(n_jobs=-1)
-            self.clf2 = AdaBoostClassifier(n_estimators=100)
-            self.clf3 = AdaBoostClassifier(n_estimators=100)
-        if (kwargs['grid'] == 3):
-#             self.clf1 = BaggingClassifier(n_jobs=-1)
-            self.clf1 = BaggingClassifier()
-            self.clf2 = AdaBoostClassifier(n_estimators=100)
-            self.clf3 = RandomForestClassifier()
-        if (kwargs['grid'] == 4):
-            self.clf1 = BaggingClassifier(n_jobs=-1)
-            self.clf2 = AdaBoostClassifier(n_estimators=100)
-            self.clf3 = AdaBoostClassifier(n_estimators=50)
-        if (kwargs['grid'] == 5):
-            self.clf1 = RandomForestClassifier(n_estimators=50)
-            self.clf2 = RandomForestClassifier(n_estimators=100)
-            self.clf3 = RandomForestClassifier(n_estimators=75)
+        self.clf1 = BaggingClassifier(n_jobs=-1)
+        self.clf2 = BaggingClassifier(n_jobs=-1)
+        self.clf3 = BaggingClassifier(n_jobs=-1)
         
-
     def train(self, x, y):
         y1 = np.array([ACTIONS[i].split('-')[0] for i in y])
         y2 = np.array([ACTIONS[i].split('-')[1] if ACTIONS[i] != 'SHIFT' else 'SHIFT' for i in y])
@@ -168,6 +113,12 @@ class Neural(Model):
 
         def __init__(self, n_features, hidden_size, num_classes):
             super().__init__()
+            if torch.cuda.is_available():
+                self.device = torch.device('cuda')
+                print('GPU is available')
+            else:
+                self.device = torch.device('cpu')
+                print('GPU not available, CPU used')
             self.fc1 = nn.Linear(n_features, hidden_size)
             self.fc1.weight.data.fill_(1.0)
             self.fc2 = nn.Linear(hidden_size, num_classes)
@@ -181,21 +132,32 @@ class Neural(Model):
         self.net = Neural.Network(n_features=kwargs['n_features'],
                                   hidden_size=128,
                                   num_classes=len(ACTIONS))
+        self.net.to(self.net.device)                                  
         self.criterion = nn.CrossEntropyLoss()
-        self.optimizer = torch.optim.SGD(self.net.parameters(), lr=1e-4, momentum=0.9)
-        self.num_iters = 200
+        self.optimizer = torch.optim.Adam(self.net.parameters(), lr=0.01)
+        self.n_epochs = 50
 
     def train(self, x, y):
-        for _ in range(self.num_iters):
-            y_pred = self.net(torch.autograd.Variable(torch.tensor(x)))
-            var = torch.autograd.Variable(torch.tensor(y))
-            loss = self.criterion(y_pred, var)
-            self.optimizer.zero_grad()
-            loss.backward()
-            self.optimizer.step()
+
+        train = TensorDataset(torch.tensor(x), torch.tensor(y))
+        for epoch in range(self.n_epochs):
+            trainloader = DataLoader(train, batch_size=32, shuffle=True, num_workers=2)
+            
+            for _, data in enumerate(trainloader, 0):
+                inputs, labels = data
+                inputs, labels = Variable(inputs.to(self.net.device)), Variable(labels.to(self.net.device))
+                self.optimizer.zero_grad()
+                y_pred = self.net(Variable(torch.tensor(inputs).to(self.net.device)))
+                loss = self.criterion(y_pred, Variable(torch.tensor(labels).to(self.net.device)))
+                loss.backward()
+                self.optimizer.step()
+
+            if epoch % 10 == 0:
+                print(f'Epoch: {epoch + 1}/{self.n_epochs}.............', end=' ')
+                print(f'Loss: {loss.item():.4f}')
 
     def predict(self, x):
-        pred = self.net(torch.autograd.Variable(torch.tensor(x.squeeze())))
+        pred = self.net(Variable(torch.tensor(x.squeeze()).to(self.net.device)))
         action = ACTIONS[pred.argmax()]
         _, indices = torch.sort(pred)
         alter_action = ACTIONS[indices[-2]]
@@ -294,7 +256,7 @@ class RNN(Model):
         return vec
 
     def predict(self, x):
-        pred, hidden = self.net(torch.autograd.Variable(torch.tensor(x).to(self.net.device)))
+        pred, hidden = self.net(Variable(torch.tensor(x).to(self.net.device)))
         prob = nn.functional.softmax(pred, dim=0).data
         actions_idx = torch.sort(prob, descending=True, dim=-1)[1][:,0]
         alter_idx = torch.sort(prob, descending=True, dim=-1)[1][:,1]
