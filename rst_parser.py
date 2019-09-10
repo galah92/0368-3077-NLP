@@ -9,16 +9,10 @@ import numpy as np
 
 class Transition():
 
-    def __init__(self, action, relation=None, nuclearity=None):
+    def __init__(self, action, nuclearity=None, relation=None):
         self.action = action
-        self.relation = relation
         self.nuclearity = nuclearity
-
-    def gen_str(self):
-        s = self.action
-        if s != 'shift':
-            s += '-' + ''.join(x[0] for x in self.nuclearity) + '-' + self.relation
-        return s.upper()
+        self.relation = relation
 
 
 def parse_files(model, trees, vocab, infiles_dir, pred_outdir):
@@ -30,6 +24,11 @@ def parse_files(model, trees, vocab, infiles_dir, pred_outdir):
         stack = deque()
         root = rst_parser(queue, stack, model, tree, vocab, max_edus)
         root.to_file(pred_outdir / tree.filename)
+
+
+NUC_DICT = {'NN': ('Nucleus', 'Nucleus'),
+            'NS': ('Nucleus', 'Satellite'),
+            'SN': ('Satellite', 'Nucleus')}
 
 
 def rst_parser(queue, stack, model, tree, vocab, max_edus):
@@ -52,38 +51,35 @@ def rst_parser(queue, stack, model, tree, vocab, max_edus):
         else:
             transition = predict(queue, stack, model, tree, vocab, max_edus, leaf_ind)
 
-        if transition.action == 'shift':
+        if transition.action == 'SHIFT':
             node = Node(relation='SPAN',
                         text=queue.pop(),
                         span=(leaf_ind, leaf_ind))
+            stack.append(node)
             leaf_ind += 1
-        else:
-            r = stack.pop()
-            l = stack.pop()
-            node.childs.append(l)
-            node.childs.append(r)
-            l.nuclearity = transition.nuclearity[0]
-            r.nuclearity = transition.nuclearity[1]
-            if l.nuclearity == 'Satellite':
-                l.relation = transition.relation
-            elif r.nuclearity == 'Satellite':
-                r.relation = transition.relation
+        else:  # reduce
+            right = stack.pop()
+            left = stack.pop()
+            node.childs.append(left)
+            node.childs.append(right)
+            nuclearity = NUC_DICT[transition.nuclearity]
+            left.nuclearity = nuclearity[0]
+            right.nuclearity = nuclearity[1]
+            if left.nuclearity == 'Satellite':
+                left.relation = transition.relation
+            elif right.nuclearity == 'Satellite':
+                right.relation = transition.relation
             else:
-                l.relation = transition.relation
-                r.relation = transition.relation
+                left.relation = transition.relation
+                right.relation = transition.relation
 
             if not queue and not stack:
                 node.nuclearity = 'Root'
-            node.span = [l.span[0], r.span[1]]
-        stack.append(node)
+            node.span = (left.span[0], right.span[1])
+            stack.append(node)
         i += 1
 
     return stack.pop()
-
-
-NUC_DICT = {'NN': ('Nucleus', 'Nucleus'),
-            'NS': ('Nucleus', 'Satellite'),
-            'SN': ('Satellite', 'Nucleus')}
 
 
 def predict(queue, stack, model, tree, vocab, max_edus, top_ind_in_queue, actions=None):
@@ -100,9 +96,6 @@ def predict(queue, stack, model, tree, vocab, max_edus, top_ind_in_queue, action
         action = alter_action
 
     if action == 'SHIFT':
-        return Transition(action='shift')
+        return Transition(action=action, nuclearity=None, relation=None)
     else:
-        _, nuc, relation, *_ = action.split('-')
-        return Transition(action='reduce',
-                          relation=relation,
-                          nuclearity=NUC_DICT[nuc])
+        return Transition(*action.split('-'))
