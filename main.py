@@ -1,4 +1,4 @@
-from preprocess import load_trees
+from trees import load_trees
 from samples import get_samples
 from rst_parser import parse_files
 from vocabulary import Vocabulary

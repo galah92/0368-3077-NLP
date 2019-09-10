@@ -1,6 +1,6 @@
 from collections import Counter
 from abc import ABC, abstractmethod
-from relations import ACTIONS
+from features import ACTIONS
 from sklearn.ensemble import RandomForestClassifier, BaggingClassifier
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.linear_model import SGDClassifier

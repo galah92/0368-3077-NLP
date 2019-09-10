@@ -1,5 +1,5 @@
 from collections import deque
-from preprocess import Node
+from trees import Node
 from evaluation import eval as evaluate
 from features import add_features_per_sample, get_features
 from samples import Sample, get_state, get_samples
