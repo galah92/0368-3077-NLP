@@ -3,6 +3,9 @@ import urllib.request
 import zipfile
 import numpy as np
 import nltk
+import sys
+
+from pytorch_pretrained_bert.tokenization import BertTokenizer
 
 
 class Vocabulary():
@@ -10,11 +13,12 @@ class Vocabulary():
     DEFAULT_TOKEN = ''
 
     def __init__(self, trees):
+        tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
         self.tokens = [Vocabulary.DEFAULT_TOKEN]
         self.tokens += [word.lower()
                         for tree in trees
                         for edu in tree.edus
-                        for word in nltk.word_tokenize(edu)]
+                        for word in tokenizer.tokenize(edu)]
         self.tokens = {word: i for i, word in enumerate(set(self.tokens))}
         self.words = self._get_word_vectors(self.tokens)
         self.tag_to_idx = self._build_tags_dict(trees)
@@ -31,26 +35,13 @@ class Vocabulary():
         return tag_to_idx
 
     def _get_word_vectors(self, tokens):
-        glove_url = 'http://nlp.stanford.edu/data/glove.6B.zip'
-        glove_dir = Path(__file__).resolve().parent / 'glove'
-        glove_zip = glove_dir / 'glove.6B.zip'
-        glove_6b_50d = glove_dir / 'glove.6B.50d.txt'
-        if not glove_zip.is_file():
-            print(f'downloading glove files to {glove_zip}')
-            glove_dir.mkdir(exist_ok=True)
-            urllib.request.urlretrieve(glove_url, str(glove_zip))
-        if not glove_6b_50d.is_file():
-            with zipfile.ZipFile(glove_zip, 'r') as f:
-                print(f'extracting {glove_zip}')
-                f.extractall(str(glove_dir))
+#         dic = np.load('../my_dict2.npy',allow_pickle=True).item()
+#         word_vectors = np.zeros((len(tokens), 768))
+        dic = np.load('my_dict.npy',allow_pickle=True).item()
         word_vectors = np.zeros((len(tokens), 50))
-        with glove_6b_50d.open(encoding='utf8') as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                token, *data = line.split()
-                if token not in tokens:
-                    continue
-                word_vectors[tokens[token]] = [float(x) for x in data]
+
+        for token in tokens.keys():
+            if token == '':
+                continue
+            word_vectors[tokens[token]] = dic[token]
         return word_vectors
