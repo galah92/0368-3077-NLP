@@ -1,3 +1,4 @@
+from evaluation import eval as evaluate
 from trees import load_trees
 from samples import get_samples
 from rst_parser import parse_files
@@ -49,5 +50,5 @@ if __name__ == '__main__':
 
     print('evaluating')
     dev_trees = load_trees(DEV_TEST_DIR, DEV_TEST_GOLD_DIR)
-    parse_files(args.model, model, dev_trees, vocab,
-                DEV_TEST_DIR, DEV_TEST_GOLD_DIR, PRED_OUTDIR)
+    parse_files(model, dev_trees, vocab, DEV_TEST_DIR, PRED_OUTDIR)
+    evaluate(DEV_TEST_GOLD_DIR, PRED_OUTDIR)

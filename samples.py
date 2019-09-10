@@ -4,10 +4,10 @@ import copy
 
 class Sample():
 
-    def __init__(self, state):
+    def __init__(self, state, tree=None):
         self.state = state
         self.action = ''
-        self.tree = ''
+        self.tree = tree
 
 
 def get_samples(trees):

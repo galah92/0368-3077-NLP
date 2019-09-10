@@ -1,8 +1,8 @@
 from collections import deque
 from trees import Node
-from evaluation import eval as evaluate
 from features import add_features_per_sample, get_features
 from samples import Sample, get_state, get_samples
+from models import RNN
 from tqdm import tqdm
 import numpy as np
 
@@ -21,29 +21,25 @@ class Transition():
         return s.upper()
 
 
-def parse_files(model_name, model, trees, vocab, infiles_dir, gold_files_dir, pred_outdir):
+def parse_files(model, trees, vocab, infiles_dir, pred_outdir):
     max_edus = max(tree.root.span[1] for tree in trees)
     pred_outdir.mkdir(exist_ok=True)
     for tree in tqdm(trees):
         tree_file = list(infiles_dir.glob(f'{tree.filename}*.edus'))[0]
         queue = deque(line.strip() for line in tree_file.open())
         stack = deque()
-        root = parse_file(queue, stack, model_name, model, tree, vocab, max_edus)
+        root = parse_file(queue, stack, model, tree, vocab, max_edus)
         root.to_file(pred_outdir / tree.filename)
-    evaluate(gold_files_dir, pred_outdir)
 
 
-def parse_file(queue, stack, model_name, model, tree, vocab, max_edus):
-    # TODO: [Eyal] fix rnn model
-    if model_name == 'rnn':
-        ## RNN ##
+def parse_file(queue, stack, model, tree, vocab, max_edus):
+    if isinstance(model, RNN):
         samples = get_samples([tree])
         x_vecs, _, sents_idx = get_features([tree], samples, vocab)
         batch_size = 1
         input_seq = np.zeros((batch_size, model.max_seq_len, model.input_size), dtype=np.float32)
         input_seq[0] = model._add_padding(x_vecs, shape=(model.max_seq_len, model.input_size))
         actions, alter_actions = model.predict(input_seq)
-        ######
 
     i = 0
     leaf_ind = 1
@@ -51,10 +47,10 @@ def parse_file(queue, stack, model_name, model, tree, vocab, max_edus):
         node = Node()
         node.relation = 'SPAN'
 
-        if model_name == 'rnn':
-            transition = predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, leaf_ind, actions=(actions[i], alter_actions[i]))
+        if isinstance(model, RNN):
+            transition = predict(queue, stack, model, tree, vocab, max_edus, leaf_ind, actions=(actions[i], alter_actions[i]))
         else:
-            transition = predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, leaf_ind)
+            transition = predict(queue, stack, model, tree, vocab, max_edus, leaf_ind)
 
         if transition.action == 'shift':
             node = Node(relation='SPAN',
@@ -90,11 +86,11 @@ NUC_DICT = {'NN': ('Nucleus', 'Nucleus'),
             'SN': ('Satellite', 'Nucleus')}
 
 
-def predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, top_ind_in_queue, actions=None):
-    sample = Sample(state=gen_config(queue, stack, top_ind_in_queue))
-    sample.tree = tree
+def predict(queue, stack, model, tree, vocab, max_edus, top_ind_in_queue, actions=None):
+    state = get_state(stack, [top_ind_in_queue] if queue else [])
+    sample = Sample(state=state, tree=tree)
     _, x_vecs = add_features_per_sample(sample, vocab, max_edus)
-    if model_name == 'rnn':
+    if isinstance(model, RNN):
         action, alter_action = actions
     else:
         action, alter_action = model.predict(np.array(x_vecs).reshape(1, -1))
@@ -112,8 +108,3 @@ def predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, t
         return Transition(action='reduce',
                           relation=relation,
                           nuclearity=NUC_DICT[nuc])
-
-
-def gen_config(queue, stack, top_ind_in_queue):
-    q_temp = [top_ind_in_queue] if queue else []
-    return get_state(stack, q_temp)
