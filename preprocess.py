@@ -5,7 +5,6 @@ import copy
 import nltk
 import re
 
-from pytorch_pretrained_bert.tokenization import BertTokenizer
 
 class Node():
 
@@ -50,7 +49,6 @@ class Node():
             ofh.writelines(f'{node.span[0]} {node.span[1]} {node.nuclearity[0]} {node.relation}\n'
                            for node in self._postorder())
 
- 
     def get_edu_ind(self):
         if not self.childs:
             return self.span[0]
@@ -59,6 +57,8 @@ class Node():
         if left.nuclearity == 'Nucleus':
             return left.get_edu_ind()
         return right.get_edu_ind()
+
+
 
 class TreeInfo():
 
@@ -71,7 +71,6 @@ class TreeInfo():
 
 
 def load_trees(dis_dir, tree_list_dir=None):
-    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
     nltk.download('punkt', quiet=True)
     nltk.download('averaged_perceptron_tagger', quiet=True)
     trees = [binarize_file(dis_file) for dis_file in dis_dir.glob('*.dis')]
@@ -92,7 +91,7 @@ def load_trees(dis_dir, tree_list_dir=None):
         with open(list(dis_dir.glob(f'{tree.filename}*.edus'))[0]) as f:
             for edu in f:
                 edu = edu.strip()
-                tree.pos_tags.append(nltk.pos_tag(tokenizer.tokenize(edu)))
+                tree.pos_tags.append(nltk.pos_tag(nltk.tokenize.word_tokenize(edu)))
                 tree.edus.append(edu)
                 if sent_transform(edu) not in sentences[sent_ind]:
                     sent_ind += 1
@@ -139,7 +138,10 @@ def build_tree(lines, stack=None):
     node.nuclearity = tokens[0]
     node.span = [int(tokens[1]), int(tokens[1])] 
     node.relation = map_to_cluster(tokens[2])
-    node.text = tokens[3][2:-5]
+    text = tokens[3]
+    text = text[2:]
+    text = text[:-5]
+    node.text = text
     return node
 
 

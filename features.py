@@ -49,13 +49,13 @@ def add_state_features(features_dict):
     features_dict.append(['SEC-TAG-STACK1', 'SEC-TAG-STACK2', 'SEC-TAG-QUEUE1'])
     features_dict.append(['THIR-TAG-STACK1', 'THIR-TAG-STACK2', 'THIR-TAG-QUEUE1'])
 
+
 def add_word_features(vocab, features_dict, edus, feat_names, word_loc):
     for i in range(len(edus)):
         words = edus[i]
         feat = feat_names[i]
         features_dict[feat] = vocab.DEFAULT_TOKEN
         if words != ['']:
-            # last word or one of the first 3 words
             if word_loc < 0 or len(words) > word_loc:
                 features_dict[feat] = words[word_loc]
 

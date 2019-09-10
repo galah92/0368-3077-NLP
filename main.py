@@ -1,5 +1,5 @@
 from preprocess import load_trees
-from train_data import get_samples
+from samples import get_samples
 from rst_parser import parse_files
 from vocabulary import Vocabulary
 from features import get_features

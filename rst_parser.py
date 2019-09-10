@@ -2,17 +2,17 @@ from collections import deque
 from preprocess import Node
 from evaluation import eval as evaluate
 from features import add_features_per_sample, get_features
-from train_data import Sample, get_state, get_samples
+from samples import Sample, get_state, get_samples
 from tqdm import tqdm
 import numpy as np
 
 
 class Transition():
 
-    def __init__(self):
-        self.nuclearity = []  # <nuc>, <nuc>
-        self.relation = ''  # cluster relation
-        self.action = ''  # shift or 'reduce'
+    def __init__(self, action, relation=None, nuclearity=None):
+        self.action = action
+        self.relation = relation
+        self.nuclearity = nuclearity
 
     def gen_str(self):
         s = self.action
@@ -85,8 +85,12 @@ def parse_file(queue, stack, model_name, model, tree, vocab, max_edus):
     return stack.pop()
 
 
+NUC_DICT = {'NN': ('Nucleus', 'Nucleus'),
+            'NS': ('Nucleus', 'Satellite'),
+            'SN': ('Satellite', 'Nucleus')}
+
+
 def predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, top_ind_in_queue, actions=None):
-    transition = Transition()
     sample = Sample(state=gen_config(queue, stack, top_ind_in_queue))
     sample.tree = tree
     _, x_vecs = add_features_per_sample(sample, vocab, max_edus)
@@ -102,30 +106,14 @@ def predict_transition(queue, stack, model_name, model, tree, vocab, max_edus, t
         action = alter_action
 
     if action == 'SHIFT':
-        transition.action = 'shift'
+        return Transition(action='shift')
     else:
-        transition.action = 'reduce'
-
-        splitaction = action.split('-')
-        nuc = splitaction[1]
-        rel = splitaction[2]
-
-        if nuc == 'NS':
-            transition.nuclearity.append('Nucleus')
-            transition.nuclearity.append('Satellite')
-        elif nuc == 'SN':
-            transition.nuclearity.append('Satellite')
-            transition.nuclearity.append('Nucleus')
-        else:
-            transition.nuclearity.append('Nucleus')
-            transition.nuclearity.append('Nucleus')
-        transition.relation = rel
-
-    return transition
+        _, nuc, relation, *_ = action.split('-')
+        return Transition(action='reduce',
+                          relation=relation,
+                          nuclearity=NUC_DICT[nuc])
 
 
 def gen_config(queue, stack, top_ind_in_queue):
-    q_temp = []
-    if queue:
-        q_temp.append(top_ind_in_queue)
+    q_temp = [top_ind_in_queue] if queue else []
     return get_state(stack, q_temp)

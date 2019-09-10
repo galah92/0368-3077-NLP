@@ -69,11 +69,3 @@ def map_to_cluster(relation):
                 'unknown cluster_relation type in label: {}'.format(relation))
 
     return cluster_relation
-
-
-def most_common(lst):
-    return Counter(lst).most_common(1)[0][0]
-
-
-def second_most_common(lst):
-    return Counter(lst).most_common(2)[1][0]
