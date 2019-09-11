@@ -6,3 +6,4 @@ torch
 torchvision
 nltk
 tqdm
+pytorch-pretrained-bert
