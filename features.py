@@ -46,34 +46,17 @@ def add_features_per_sample(sample, vocab, max_edus):
         edus.append([''] if i == 0 else [word for word, _ in sample.tree.pos_tags[i]])
         tags.append([''] if i == 0 else [tag for _, tag in sample.tree.pos_tags[i]])
 
-    add_state_features(features)
     for idx, state in enumerate(sample.state):
-        add_word_features(vocab, features_dict, edus, features[idx], i)
-        add_tag_features(features_dict, tags, features[idx + 3], i)
         features_dict[f'QueueStackStatus{idx}'] = 1 if state == 0 else 0
         features_dict[f'LastTokenIsSeparator{idx}'] = 1 if edus[idx][-1] in ['.', ',',';','"', "'"] else 0
-
         for n in [0, 1, 2, 3, -1, -2, -3]:
             features_dict[f'EduWord{n}-State{idx}'] = edus[idx][n] if abs(n) < len(edus[idx]) else ""
             features_dict[f'EduTag{n}-State{idx}'] = tags[idx][n] if abs(n) < len(edus[idx]) else ""
 
-    features = ['END-WORD-STACK1', 'END-WORD-STACK2', 'END-WORD-QUEUE1']
-    add_word_features(vocab, features_dict, edus, features, -1)
-    features = ['END-TAG-STACK1', 'END-TAG-STACK2', 'END-TAG-QUEUE1']
-    add_tag_features(features_dict, tags, features, -1)
     add_edu_features(features_dict, sample.tree, sample.state, edus, max_edus)
 
     vecs = vectorize_features(features_dict, vocab)
     return features_dict, vecs
-
-
-def add_state_features(features_dict):
-    features_dict.append(['BEG-WORD-STACK1', 'BEG-WORD-STACK2', 'BEG-WORD-QUEUE1'])
-    features_dict.append(['SEC-WORD-STACK1', 'SEC-WORD-STACK2', 'SEC-WORD-QUEUE1'])
-    features_dict.append(['THIR-WORD-STACK1', 'THIR-WORD-STACK2', 'THIR-WORD-QUEUE1'])
-    features_dict.append(['BEG-TAG-STACK1', 'BEG-TAG-STACK2', 'BEG-TAG-QUEUE1'])
-    features_dict.append(['SEC-TAG-STACK1', 'SEC-TAG-STACK2', 'SEC-TAG-QUEUE1'])
-    features_dict.append(['THIR-TAG-STACK1', 'THIR-TAG-STACK2', 'THIR-TAG-QUEUE1'])
 
 
 def add_word_features(vocab, features_dict, edus, feat_names, word_loc):
@@ -98,18 +81,16 @@ def add_tag_features(features_dict, tags_list, feat_names, tag_loc):
 
 def add_edu_features(features_dict, tree, state, edus, max_edus):
     features = ['LEN-STACK1', 'LEN-STACK2', 'LEN-QUEUE1']
-    edu_tree_idx = []
 
     for idx, i in enumerate(state):
         features_dict[features[idx]] = 0 if i == 0 else len(edus[idx]) / max_edus
-        edu_tree_idx.append(0 if i == 0 else i)
-
-    features_dict['DIST-FROM-START-STACK1'] = (edu_tree_idx[0] - 1.0) / max_edus
-    features_dict['DIST-FROM-END-STACK1'] = (tree.root.span[1] - edu_tree_idx[0]) / max_edus
-    features_dict['DIST-FROM-START-STACK2'] = (edu_tree_idx[1] - 1.0) / max_edus
-    features_dict['DIST-FROM-END-STACK2'] = (tree.root.span[1] - edu_tree_idx[1]) / max_edus
-    features_dict['DIST-FROM-START-QUEUE1'] = (edu_tree_idx[2] - 1.0) / max_edus
-    features_dict['DIST-STACK1-QUEUE1'] = (edu_tree_idx[2] - edu_tree_idx[0]) / max_edus
+    
+    features_dict['DIST-FROM-START-STACK1'] = (state[0] - 1.0) / max_edus
+    features_dict['DIST-FROM-END-STACK1'] = (tree.root.span[1] - state[0]) / max_edus
+    features_dict['DIST-FROM-START-STACK2'] = (state[1] - 1.0) / max_edus
+    features_dict['DIST-FROM-END-STACK2'] = (tree.root.span[1] - state[1]) / max_edus
+    features_dict['DIST-FROM-START-QUEUE1'] = (state[2] - 1.0) / max_edus
+    features_dict['DIST-STACK1-QUEUE1'] = (state[2] - state[0]) / max_edus
     features_dict['SpanSize'] = tree.root.span[1]-tree.root.span[0]
     features_dict['SameSen-STACK1-QUEUE1'] = 1 if tree.sents_idx[state[0]] == tree.sents_idx[state[2]] else 0
     features_dict['SameSen-STACK1-STACK2'] = 1 if tree.sents_idx[state[0]] == tree.sents_idx[state[1]] else 0

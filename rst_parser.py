@@ -98,4 +98,4 @@ def predict(queue, stack, model, tree, vocab, max_edus, top_ind_in_queue, action
     if action == 'SHIFT':
         return Transition(action=action, nuclearity=None, relation=None)
     else:
-        return Transition(*action.split('-'))
+        return Transition(*action.split('-', 2))
