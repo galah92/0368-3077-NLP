@@ -39,7 +39,6 @@ def get_features(trees, samples, vocab):
 
 def add_features_per_sample(sample, vocab, max_edus):
     features_dict = {}
-    features = []
     edus = []
     tags = []
     for i in sample.state:
@@ -53,7 +52,8 @@ def add_features_per_sample(sample, vocab, max_edus):
             features_dict[f'EduWord{n}-State{idx}'] = edus[idx][n] if abs(n) < len(edus[idx]) else ""
             features_dict[f'EduTag{n}-State{idx}'] = tags[idx][n] if abs(n) < len(edus[idx]) else ""
 
-    add_edu_features(features_dict, sample.tree, sample.state, edus, max_edus)
+    if sample.tree.root:
+        add_edu_features(features_dict, sample.tree, sample.state, edus, max_edus)
 
     vecs = vectorize_features(features_dict, vocab)
     return features_dict, vecs
@@ -84,7 +84,7 @@ def add_edu_features(features_dict, tree, state, edus, max_edus):
 
     for idx, i in enumerate(state):
         features_dict[features[idx]] = 0 if i == 0 else len(edus[idx]) / max_edus
-    
+
     features_dict['DIST-FROM-START-STACK1'] = (state[0] - 1.0) / max_edus
     features_dict['DIST-FROM-END-STACK1'] = (tree.root.span[1] - state[0]) / max_edus
     features_dict['DIST-FROM-START-STACK2'] = (state[1] - 1.0) / max_edus

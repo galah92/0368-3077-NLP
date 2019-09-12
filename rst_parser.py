@@ -1,5 +1,5 @@
 from collections import deque
-from trees import Node
+from trees import Node, TreeInfo
 from features import add_features_per_sample, get_features
 from samples import Sample, get_state, get_samples
 from models import RNN
@@ -31,14 +31,14 @@ NUC_DICT = {'NN': ('Nucleus', 'Nucleus'),
             'SN': ('Satellite', 'Nucleus')}
 
 
-def rst_parser(queue, stack, model, tree, vocab, max_edus):
-    if isinstance(model, RNN):
-        samples = get_samples([tree])
-        x_vecs, _, sents_idx = get_features([tree], samples, vocab)
-        batch_size = 1
-        input_seq = np.zeros((batch_size, model.max_seq_len, model.input_size), dtype=np.float32)
-        input_seq[0] = model._add_padding(x_vecs, shape=(model.max_seq_len, model.input_size))
-        actions, alter_actions = model.predict(input_seq)
+def rst_parser(queue, stack, model, vocab, max_edus):
+    # if isinstance(model, RNN):
+    #     samples = get_samples([tree])
+    #     x_vecs, _, sents_idx = get_features([tree], samples, vocab)
+    #     batch_size = 1
+    #     input_seq = np.zeros((batch_size, model.max_seq_len, model.input_size), dtype=np.float32)
+    #     input_seq[0] = model._add_padding(x_vecs, shape=(model.max_seq_len, model.input_size))
+    #     actions, alter_actions = model.predict(input_seq)
 
     i = 0
     leaf_ind = 1
@@ -47,9 +47,9 @@ def rst_parser(queue, stack, model, tree, vocab, max_edus):
         node.relation = 'SPAN'
 
         if isinstance(model, RNN):
-            transition = predict(queue, stack, model, tree, vocab, max_edus, leaf_ind, actions=(actions[i], alter_actions[i]))
+            transition = predict(queue, stack, model, vocab, max_edus, leaf_ind, actions=(actions[i], alter_actions[i]))
         else:
-            transition = predict(queue, stack, model, tree, vocab, max_edus, leaf_ind)
+            transition = predict(queue, stack, model, vocab, max_edus, leaf_ind)
 
         if transition.action == 'SHIFT':
             node = Node(relation='SPAN',
@@ -82,9 +82,9 @@ def rst_parser(queue, stack, model, tree, vocab, max_edus):
     return stack.pop()
 
 
-def predict(queue, stack, model, tree, vocab, max_edus, top_ind_in_queue, actions=None):
+def predict(queue, stack, model, vocab, max_edus, top_ind_in_queue, actions=None):
     state = get_state(stack, [top_ind_in_queue] if queue else [])
-    sample = Sample(state=state, tree=tree)
+    sample = Sample(state=state, tree=TreeInfo(root=None))
     _, x_vecs = add_features_per_sample(sample, vocab, max_edus)
     x = np.array(x_vecs).reshape(1, -1)
     action, alter_action = actions if actions else model.predict(x)

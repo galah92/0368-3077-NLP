@@ -59,10 +59,9 @@ class Node():
         return right.get_edu_ind()
 
 
-
 class TreeInfo():
 
-    def __init__(self, root, filename):
+    def __init__(self, root, filename=None):
         self.filename = filename
         self.root = root
         self.edus = ['']
