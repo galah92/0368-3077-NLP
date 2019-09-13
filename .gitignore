@@ -6,3 +6,4 @@ __pycache__/
 glove/
 **/pred
 **/dev_gold
+**/TEST_PRED

@@ -27,9 +27,8 @@ ACTIONS = ['REDUCE-' + nuc + '-' + relation
            for nuc in NUCLARITIES] + ['SHIFT']
 
 
-def get_features(trees, samples, vocab):
+def get_features(trees, samples, vocab, max_edus):
     # samples = samples[:150]  # debug
-    max_edus = max(tree.root.span[1] for tree in trees)
     x_train = [add_features_per_sample(sample, vocab, max_edus)[1]
                for sample in samples]
     y_train = [ACTIONS.index(sample.action) for sample in samples]
@@ -52,8 +51,7 @@ def add_features_per_sample(sample, vocab, max_edus):
             features_dict[f'EduWord{n}-State{idx}'] = edus[idx][n] if abs(n) < len(edus[idx]) else ""
             features_dict[f'EduTag{n}-State{idx}'] = tags[idx][n] if abs(n) < len(edus[idx]) else ""
 
-    if sample.tree.root:
-        add_edu_features(features_dict, sample.tree, sample.state, edus, max_edus)
+    add_edu_features(features_dict, sample.tree, sample.state, edus, max_edus)
 
     vecs = vectorize_features(features_dict, vocab)
     return features_dict, vecs
@@ -86,12 +84,12 @@ def add_edu_features(features_dict, tree, state, edus, max_edus):
         features_dict[features[idx]] = 0 if i == 0 else len(edus[idx]) / max_edus
 
     features_dict['DIST-FROM-START-STACK1'] = (state[0] - 1.0) / max_edus
-    features_dict['DIST-FROM-END-STACK1'] = (tree.root.span[1] - state[0]) / max_edus
+    # features_dict['DIST-FROM-END-STACK1'] = (tree.root.span[1] - state[0]) / max_edus
     features_dict['DIST-FROM-START-STACK2'] = (state[1] - 1.0) / max_edus
-    features_dict['DIST-FROM-END-STACK2'] = (tree.root.span[1] - state[1]) / max_edus
+    # features_dict['DIST-FROM-END-STACK2'] = (tree.root.span[1] - state[1]) / max_edus
     features_dict['DIST-FROM-START-QUEUE1'] = (state[2] - 1.0) / max_edus
     features_dict['DIST-STACK1-QUEUE1'] = (state[2] - state[0]) / max_edus
-    features_dict['SpanSize'] = tree.root.span[1]-tree.root.span[0]
+    # features_dict['SpanSize'] = tree.root.span[1]-tree.root.span[0]
     features_dict['SameSen-STACK1-QUEUE1'] = 1 if tree.sents_idx[state[0]] == tree.sents_idx[state[2]] else 0
     features_dict['SameSen-STACK1-STACK2'] = 1 if tree.sents_idx[state[0]] == tree.sents_idx[state[1]] else 0
 

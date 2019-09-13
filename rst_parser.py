@@ -1,7 +1,7 @@
 from collections import deque
-from trees import Node, TreeInfo
-from features import add_features_per_sample, get_features
-from samples import Sample, get_state, get_samples
+from trees import Node
+from features import add_features_per_sample
+from samples import Sample, get_state
 from models import RNN
 from tqdm import tqdm
 import numpy as np
@@ -15,15 +15,13 @@ class Transition():
         self.relation = relation
 
 
-def parse_files(model, trees, vocab, infiles_dir, pred_outdir):
-    max_edus = max(tree.root.span[1] for tree in trees)
+def parse_files(model, trees, max_edus, vocab, infiles_dir, pred_outdir):
     pred_outdir.mkdir(exist_ok=True)
     for tree in tqdm(trees):
-        tree_file = list(infiles_dir.glob(f'{tree.filename}*.edus'))[0]
-        queue = deque(line.strip() for line in tree_file.open())
+        queue = deque(line.strip() for line in tree.filename.with_suffix('.out.edus').open())
         stack = deque()
-        root = rst_parser(queue, stack, model, tree, vocab, max_edus)
-        root.to_file(pred_outdir / tree.filename)
+        root = rst_parser(queue, stack, model, vocab, tree, max_edus)
+        root.to_file(pred_outdir / tree.filename.stem)
 
 
 NUC_DICT = {'NN': ('Nucleus', 'Nucleus'),
@@ -31,7 +29,7 @@ NUC_DICT = {'NN': ('Nucleus', 'Nucleus'),
             'SN': ('Satellite', 'Nucleus')}
 
 
-def rst_parser(queue, stack, model, vocab, max_edus):
+def rst_parser(queue, stack, model, vocab, tree, max_edus):
     # if isinstance(model, RNN):
     #     samples = get_samples([tree])
     #     x_vecs, _, sents_idx = get_features([tree], samples, vocab)
@@ -47,9 +45,9 @@ def rst_parser(queue, stack, model, vocab, max_edus):
         node.relation = 'SPAN'
 
         if isinstance(model, RNN):
-            transition = predict(queue, stack, model, vocab, max_edus, leaf_ind, actions=(actions[i], alter_actions[i]))
+            transition = predict(queue, stack, model, vocab, tree, max_edus, leaf_ind, actions=(actions[i], alter_actions[i]))
         else:
-            transition = predict(queue, stack, model, vocab, max_edus, leaf_ind)
+            transition = predict(queue, stack, model, vocab, tree, max_edus, leaf_ind)
 
         if transition.action == 'SHIFT':
             node = Node(relation='SPAN',
@@ -82,9 +80,9 @@ def rst_parser(queue, stack, model, vocab, max_edus):
     return stack.pop()
 
 
-def predict(queue, stack, model, vocab, max_edus, top_ind_in_queue, actions=None):
+def predict(queue, stack, model, vocab, tree, max_edus, top_ind_in_queue, actions=None):
     state = get_state(stack, [top_ind_in_queue] if queue else [])
-    sample = Sample(state=state, tree=TreeInfo(root=None))
+    sample = Sample(state=state, tree=tree)
     _, x_vecs = add_features_per_sample(sample, vocab, max_edus)
     x = np.array(x_vecs).reshape(1, -1)
     action, alter_action = actions if actions else model.predict(x)

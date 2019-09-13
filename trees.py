@@ -6,6 +6,7 @@ import nltk
 import re
 from pytorch_pretrained_bert.tokenization import BertTokenizer
 
+
 class Node():
 
     def __init__(self, nuclearity='', relation='', childs=None, span=[0, 0], text=''):
@@ -61,7 +62,7 @@ class Node():
 
 class TreeInfo():
 
-    def __init__(self, root, filename=None):
+    def __init__(self, root=None, filename=None):
         self.filename = filename
         self.root = root
         self.edus = ['']
@@ -73,22 +74,22 @@ def load_trees(dis_dir, tree_list_dir=None):
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
     nltk.download('punkt', quiet=True)
     nltk.download('averaged_perceptron_tagger', quiet=True)
-    trees = [binarize_file(dis_file) for dis_file in dis_dir.glob('*.dis')]
+
     if tree_list_dir is not None:
         tree_list_dir.mkdir(exist_ok=True)
-        for tree in trees:
-            tree.root.to_file(tree_list_dir / tree.filename)
-    for tree in tqdm(trees):
+
+    trees = []
+    max_edus = 0
+    for tree_file in dis_dir.glob('*.edus*'):
         # populate sentences
-        file_path = dis_dir / tree.filename
-        if not file_path.is_file():
-            file_path = file_path.with_suffix('.out')
-        content = ''.join(sent_transform(line) for line in file_path.open('r'))
+        content = ''.join(sent_transform(line) for line in tree_file.open())
         content = content.replace(' \n', ' ').replace('\n', ' ').replace('  ', ' ')
         sentences = [''] + [sent for sent in nltk.tokenize.sent_tokenize(content) if sent.strip() != '']
         # populate all the rest
+        max_edus = max(max_edus, sum(1 for _ in tree_file.open()))
         sent_ind = 1
-        with open(list(dis_dir.glob(f'{tree.filename}*.edus'))[0]) as f:
+        tree = TreeInfo(filename=tree_file.with_suffix(''))
+        with tree_file.open() as f:
             for edu in f:
                 edu = edu.strip()
                 tree.pos_tags.append(nltk.pos_tag(tokenizer.tokenize(edu)))
@@ -96,14 +97,19 @@ def load_trees(dis_dir, tree_list_dir=None):
                 if sent_transform(edu) not in sentences[sent_ind]:
                     sent_ind += 1
                 tree.sents_idx.append(sent_ind)
-    return trees
+        tree_dis_file = tree_file.with_suffix('.dis')
+        if tree_dis_file.is_file():
+            tree.root = binarize_file(tree_dis_file)
+            # tree.root.to_file(tree.filename)
+        trees.append(tree)
+    return trees, max_edus
 
 
 def binarize_file(dis_path):
-    lines = [line.split('//')[0] for line in dis_path.open('r')]
+    lines = [line.split('//')[0] for line in dis_path.open()]
     root = build_tree(lines[::-1])
     root.binarize()
-    return TreeInfo(root=root, filename=dis_path.stem.split('.')[0])
+    return root
 
 
 def build_tree(lines, stack=None):
@@ -157,7 +163,9 @@ def build_root_childs(lines, stack):
 
 
 def sent_transform(string):
+    string = string.replace(' . .', '')
     string = string.replace(' . . .', '')
+    string = string.replace(' . . . .', '')
     string = string.replace('Mr.', 'Mr')
     string = string.replace('No.', 'No')
     # 'and. . . some'

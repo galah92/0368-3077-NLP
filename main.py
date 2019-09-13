@@ -15,6 +15,8 @@ TRAINING_DIR = DATASET_PATH / 'TRAINING'
 DEV_TEST_DIR = DATASET_PATH / 'DEV'
 DEV_TEST_GOLD_DIR = DATASET_PATH / 'dev_gold'
 PRED_OUTDIR = DATASET_PATH / 'pred'
+TEST_DIR = DATASET_PATH / 'TEST'
+TEST_PRED_DIR = DATASET_PATH / 'TEST_PRED'
 
 MODELS = {
     'sgd': SGD,
@@ -33,9 +35,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     print('preprocessing')
-    trees = load_trees(TRAINING_DIR)
+    trees, max_edus = load_trees(TRAINING_DIR)
     vocab, samples = Vocabulary(trees), get_samples(trees)
-    x_train, y_train, sents_idx = get_features(trees, samples, vocab)
+    x_train, y_train, sents_idx = get_features(trees, samples, vocab, max_edus)
 
     print('training')
     model = MODELS[args.model](trees=trees,
@@ -45,7 +47,9 @@ if __name__ == '__main__':
                                models=[SGD, MultiLabel, RandomForest])
     model.train(x_train, y_train)
 
-    print('evaluating')
-    dev_trees = load_trees(DEV_TEST_DIR, DEV_TEST_GOLD_DIR)
-    parse_files(model, dev_trees, vocab, DEV_TEST_DIR, PRED_OUTDIR)
-    evaluate(DEV_TEST_GOLD_DIR, PRED_OUTDIR)
+    # print('evaluating')
+    # dev_trees = load_trees(DEV_TEST_DIR, DEV_TEST_GOLD_DIR)
+    # parse_files(model, dev_trees, vocab, DEV_TEST_DIR, PRED_OUTDIR)
+    # evaluate(DEV_TEST_GOLD_DIR, PRED_OUTDIR)
+    test_trees, max_edus = load_trees(TEST_DIR)
+    parse_files(model, test_trees, max_edus, vocab, TEST_DIR, TEST_PRED_DIR)
