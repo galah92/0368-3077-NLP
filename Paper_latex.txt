@@ -1,0 +1,100 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+ 
+
+\usepackage{multicol}
+\setlength{\columnsep}{1cm}
+\usepackage{graphicx}
+
+\begin{document}
+\twocolumn
+\title {RST Parser - Final Project}
+\author{Gal Aharoni, Eyal Gomel and Nitzan Yogev \\
+School of Computer Science, Tel-Aviv University}
+\maketitle 
+
+
+\section{Abstract}
+Discourse parsing is an integral part of understanding information flow and argumentative structure in documents. In this paper, we show our model, based on that facilitates RST discourse parsing. We present how we turn surface features and shift-reduce discourse parser into a method that achieves great relations and NUCLEARITY prediction on the RST Treebank.
+
+\section{Introduction}
+RST, Rhetorical Structure Theory, is a framework where coherent text can be represented as a discourse tree whose leaves are non-overlapping text spans called elementary discourse units, EDUs, which represent in the discourse trees the most minimal unit. Each adjacent node can be related to another by particular discourse relation from a discourse subtree.
+RST Discourse Treebank (RST-DT) is the largest corpus of texts annotated with full discourse structures. It contains 385 articles from the Wall Street Journal. These articles are a subset of the Penn Treebank corpus and divided into a training set of 347 documents and test set of 38 documents. The relation has a form of one of the options: NS, SN, and NN. N represents Nucleus - tend to be the more important part than S that stands for Satellite. Figure 1 shows an example of RST discourse tree where each sentence is an EDU and justify, condition and volitional-result are discourse relation labels and the arrows indicate the NUCLEARITIES of discourse relations.
+
+Our first step toward the solution was to follow Ji and Eisenstein (2014) in a way of using a transition-based framework for RST discourse parsing. The concept is somewhat trivial to understand and can be implemented in a variety of problems. State and Actions are the two components in which a transition system is consisted of. The purpose of the states is to maintain an intermediate stage of parsing results. Actions are used to control the transitions between states. The states go from empty to full result. The two main actions are Shift and Reduce. Shift: removes the first EDU in the stack and inserts it to the stack. Each shift action forms a single node subtree. Reduce: concatenates the top two subtrees on the stack, which made of discourse relation label and relation nuclearity. When the stack contains only one subtree and the queue is empty Pop-root is called and pops it out and signals that the operation is done. The next step was to look at the task as a classification task and hence to decide which model we should use and accordingly which features are important. 
+
+\begin{figure}
+  \includegraphics[width=\linewidth]{Screenshot_1.jpg}
+  \caption{An example text fragment composed of three EDUs, and its RST discourse tree representation,  adapted from Ji and Eisenstein (2014). }
+  \label{fig:fig1}
+\end{figure}
+
+Figure \ref{fig:fig1} shows fig1.
+
+\section{Related Work}
+As we mentioned above, satellites tend to be less important, and nuclei tend to be more important is the product of paper by Marcu (1999). This conclusion gave Voll and Taboada (2007) an idea: to keep in the sentences only the words which are the most nucleus. We chose not to implement because our task demands the relations between each text span. Another work we saw tried to reweight the discourse unit depending on the relations it is in. We intended to try this idea but unfortunately, we couldn't make it. The most inspiring paper was by Ji and Eisenstein (2014) and we drew a lot of ideas from them.  
+
+\section{Problem Statement}
+The main motivation led us to the subject was to be able to analyze text or speech discourse structure as it can lead to application development in the subjects of sentiment analysis, summarizing texts and understanding an interactive conversation. We were provided with annotated documents from the RST-DT train and dev sets, as well as the test set documents without the ground truth trees. The provided data includes 3
+files for each train/dev sample:
+1. .out files - the full original text
+2. .out.edus files - the segmentation of the full text into EDUs
+3. .out.dis files - the discourse tree.
+Additionally, we got a list of all relations possible with over 60 relations. We gathered close meaning relations and ended up with 19 relations overall. Furthermore, we had to binarize our trees to bo compatible with the rest. We trained our model (see more in Model section) on the train set and evaluate its correctness on the dev set. The model which got the highest F1 results was chosen to be the one that runs on the test set.
+
+\section{Our Approach}
+\subsection{Data extraction}
+We were given 300 files that represent a tree of EDUs, which converted to a binary tree. We translated every tree to a sequence of SHIFT/REDUCE actions, and create a sample of states. We define a state by 3 dimensions tuple and an action: 2 EDUs in the head of the stack and 1 EDU on the top of the queue. For example - (2, 4, 28): EDU number 2 in the text file is the first element in the stack, EDU number 4 in the text file is the second element in the stack and EDU number 28 is the element on the top of the queue. We gather these states to one dataset and handled it as an I.I.D dataset, although it’s not I.I.D.  In order to decrease the correlation between the samples, we used mini-batches techniques for neural networks training.
+\subsection{Feature Extraction}
+We believe that the feature extraction stage is one of the important stages of this work. On the one hand, in such problems as RST parsing, there is great importance to extract useful features due to the complexity of the problem. On the other hand, too many features along non-useful features might fail any model. This is even more important when we use words as features, due to the dimensionality of the embeddings. At the first stage, we split the features into two major domains: NLP features and parsing status features. For the features that include words, we use two different word embeddings: GloVe and BERT. Glove is pre-trained, context independent model for obtaining vector representations for words while BERT is a novel contextualized word embeddings model. For obtaining BERT word embeddings we use pre-trained version of BERT, and then continue the training with our data. Both the train and the test data are from the Penn Treebank corpus, thus it sounds likely to use contextualized word embeddings. Unfortunately, we didn’t achieve significant improvement with BERT embeddings.
+We will describe the features
+
+\subsection{Features}
+In purpose to enrich our model, improve and make it more versatile we add to the following information: First, we start with the trivial which is how many tokens are in the EDU. We check what is the state of the stack, means if the stack has more than two elements or not. Is the last token is separator? We think it could give another information of the EDU’s location in the text. Other features we add are related to three tokens from start and three from the end: we figured these tokens' embeddings and POS (part of speech) tags. Our idea that it will be beneficial relies on our assumption that each relation has the same structure overall. Therefore, we tested different numbers of words and got that three yields the best estimation. Also, the distance of EDU from the beginning of the file, in terms of EDUs. Finally, we checked the distance between each of the top two EDUs in the stack and the first EDU in the queue and in addition if those EDUs are in the same sentence.
+
+\begin{table*}[h!]
+\begin{tabular}{|c| c c c |}
+\hline
+System & Span & Nuclearity & Relation \\ [0.5ex] 
+\hline
+ DPLP concat & 82.08 & 71.13 & 61.63 \\ 
+ DPLP general & 81.60 & 70.95 & 61.75 \\  
+ OUR MODEL & - & - & - \\
+ Human annotation & 88.70 & 77.72 & 65.75 \\
+ \hline
+\end{tabular}
+\caption{Prior work results are reprinted(DPLP) (Ji and Eisenstein, 2014b)}
+\label{table:1}
+\end{table*}
+
+\subsection{Model}
+First, we tackle the problem through a standard approach of a multi-label classification problem. The goal is to predict a specific label from a large set of labels, which represent ACTION, NUCLEARITY, and RELATIONS as well. As a classification problem, in addition to common parsing issues, we face many difficulties such as the similar meaning of RELATIONS, hard to predict rare labels, ‘illegal’ predictions (due to shift-reduce parsing limitations), etc. As a solution to the ‘illegal’ predictions which the models might predict, we choose to predict the two most probable labels and choose the second one if the first is illegal action, for the current parsing state. This indeed helps us in the prediction, however, there was a cost in the prediction time.
+To deal with classification problem we try a variety of classic models, such as linear models, kernelized SVM, RandomForest,  and other bagging and boosting algorithms with few different base classifiers. Most of the models struggle with the size of the dataset and the complexity of the problem. To simplify the problem, we thought to face the problem with a different approach: split the classification into three parts, as a hierarchical classification problem. Our main motivation to do this shift is the sophisticated connections between the different RELATIONS, which we point as one of the most challenging issues. We create a hierarchical model which first predicts the ACTION needed, then, if necessary, predict the NUCLEARITY and later predict the RELATION label. For every part of the classification, we learn a different model, with the same training data, and a smaller part of labels. The first model is a binary model that predicts if the model should do shift or reduce, the second model is a multi-label model, which predicts the N/S labels and the third model predict the RELATION. For every model, we try the same popular algorithms as mentioned above. While dealing with the hierarchical problem, there were some extra difficulties such as ‘illegal’ predictions, which we separately handle, and long training time due to the multiple models. We got a better score with the hierarchical models than the standard ones. Just to note, during the search after the best model we try to implement a RNN model but due to technical issues combine with that the RNN model is a bit more complex model to implement, we had to put the idea aside and get along with other models, such as basic Nureal Network which actually yielded quite not bad results.
+
+
+
+
+
+\section{Further work}
+As mentioned before, we tried to implement an RNN model but couldn't complete it. A further work on this subject is needed and might lead to better results. The rationale behind focus the subject is that the RNN model performs very well on NLP tasks and especcialy in this type of task. Another further work that can be done is to find other ways of feature selection so we will be able to understand which features are more relevant for the model to perform better and try to extract more features from the same style.
+
+
+\begin{thebibliography}{9}
+
+\bibitem{latexcompanion} 
+Daniel Marcu. 1999. A Decision-Based Approach to Rhetorical Parsing. In Proceedings of ACL, pages 365–372, College Park, Maryland, USA, June. Association for Computational Linguistics
+\bibitem{latexcompanion} 
+Kimberly Voll and Maite Taboada. (2007). Not all words are created equal: Extracting semantic orientation as a function of adjective relevance. In Proceedings of Australian Conference on Artificial Intelligence. 
+\bibitem{latexcompanion} 
+Yangfeng Ji and Jacob Eisenstein. (2014). Representation learning for text-level discourse parsing. In Proceedings of the Association for Computational Linguistics (ACL), Baltimore, MD.
+\bibitem{latexcompanion} 
+Nan Yu, Meishan Zhang and Guohong Fu.Transition-based Neural RST Parsing with Implicit Syntax Features.  School of Computer Science and Technology, Heilongjiang University, China
+\bibitem{latexcompanion} 
+Parminder Bhatia and Yangfeng Ji and Jacob Eisenstein. (2015). Better Document-level Sentiment Analysis from RST Discourse Parsing.  School of Interactive Computing Georgia Institute of Technology Atlanta, GA 30308 
+\bibitem{latexcompanion} 
+MANN, WILLIAM & Thompson, Sandra. (1988). Rhetorical Structure Theory: Toward a functional theory of text organization. Text. 8. 243-281. 10.1515/text.1.1988.8.3.243. 
+\bibitem{latexcompanion} 
+Vanessa Wei Feng and Graeme Hirst. (2012). Text-level Discourse Parsing with Rich Linguistic Features. Department of Computer Science University of Toronto.
+\end{thebibliography}
+\end{document}
