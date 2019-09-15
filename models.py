@@ -1,6 +1,6 @@
 from collections import Counter
 from abc import ABC, abstractmethod
-from features import ACTIONS
+from features import ACTIONS, ACTIONS_S, ACTIONS_N, ACTIONS_R, ACTIONS_S_TO_IDX, ACTIONS_N_TO_IDX, ACTIONS_R_TO_IDX, IDX_S_TO_ACTION, IDX_N_TO_ACTION, IDX_R_TO_ACTION
 from sklearn.ensemble import RandomForestClassifier, BaggingClassifier
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.linear_model import SGDClassifier
@@ -74,9 +74,10 @@ class RandomForest(Model):
 class MultiLabel(Model):
 
     def __init__(self, *args, **kwargs):
-        self.clf1 = BaggingClassifier(n_jobs=-1)
-        self.clf2 = BaggingClassifier(n_jobs=-1)
-        self.clf3 = BaggingClassifier(n_jobs=-1)
+        n_estimators = 100
+        self.clf1 = RandomForestClassifier(n_estimators=n_estimators)
+        self.clf2 = BaggingClassifier(n_jobs=1)
+        self.clf3 = BaggingClassifier(n_jobs=1)
 
     def train(self, x, y):
         y1 = np.array([ACTIONS[i].split('-')[0] for i in y])
@@ -92,9 +93,65 @@ class MultiLabel(Model):
         pred3 = self.clf3.predict_proba(x)
         a1 = 'REDUCE'
         # fix the action if needed
-        a2 = self.clf2.classes_[np.argmax(pred2)] if self.clf2.classes_[np.argmax(pred2)] != 'SHIFT' else self.clf2.classes_[np.argsort(pred2).squeeze()[-2]] 
-        a3 = self.clf3.classes_[np.argmax(pred3)] if self.clf3.classes_[np.argmax(pred3)] != 'SHIFT' else self.clf3.classes_[np.argsort(pred3).squeeze()[-2]]
+        a2_pred = self.clf2.classes_[np.argsort(pred2).squeeze()]
+        a2 = a2_pred[-1] if a2_pred[-1] != 'SHIFT' else a2_pred[-2]
+        a3_pred = self.clf3.classes_[np.argsort(pred3).squeeze()]
+        a3 = a3_pred[-1] if a3_pred[-1] != 'SHIFT' else a3_pred[-2]
         if self.clf1.classes_[np.argmax(pred1)] == 'SHIFT':
+            action = 'SHIFT'
+            alter_action = '-'.join([a1, a2, a3])
+        else:
+            action = '-'.join([a1, a2, a3])
+            alter_action = 'INVALID'
+        return action, alter_action
+
+class NeuralMultiLabel(Model):
+
+    def __init__(self, *args, **kwargs):
+        kwargs['num_classes'] = len(ACTIONS_S)
+        kwargs['hidden_size'] = 128
+        kwargs['batch_size'] = 1024
+        kwargs['epochs'] = 11
+        self.clf1 = Neural(*args, **kwargs)
+        kwargs['num_classes'] = len(ACTIONS_N)
+        kwargs['hidden_size'] = 256
+        kwargs['batch_size'] = 1024
+        kwargs['epochs'] = 11
+        self.clf2 = Neural(*args, **kwargs)
+        kwargs['num_classes'] = len(ACTIONS_R)
+        kwargs['hidden_size'] = 256
+        kwargs['batch_size'] = 1024
+        kwargs['epochs'] = 11
+        self.clf3 = Neural(*args, **kwargs)
+
+
+        def predict(self, x):
+            pred = self.net(Variable(torch.tensor(x.squeeze()).to(self.net.device)))
+            return pred
+
+        self.clf1.predict = predict
+        self.clf2.predict = predict
+        self.clf3.predict = predict
+
+    def train(self, x, y):
+        y1 = np.array([ACTIONS_S_TO_IDX[ACTIONS[i].split('-')[0]] for i in y])
+        y2 = np.array([ACTIONS_N_TO_IDX[ACTIONS[i].split('-')[1]] if ACTIONS[i] != 'SHIFT' else ACTIONS_N_TO_IDX['SHIFT'] for i in y])
+        y3 = np.array([ACTIONS_R_TO_IDX[ACTIONS[i].split('-')[2]] if ACTIONS[i] != 'SHIFT' else ACTIONS_R_TO_IDX['SHIFT'] for i in y])
+        self.clf1.train(x, y1)
+        self.clf2.train(x, y2)
+        self.clf3.train(x, y3)
+
+    def predict(self, x):
+        pred1 = self.clf1.net(Variable(torch.tensor(x.squeeze()).to(self.clf1.net.device)))
+        pred2 = self.clf2.net(Variable(torch.tensor(x.squeeze()).to(self.clf2.net.device)))
+        pred3 = self.clf3.net(Variable(torch.tensor(x.squeeze()).to(self.clf3.net.device)))
+        a1 = 'REDUCE'
+        # fix the action if needed
+        a2_pred = torch.argsort(pred2).squeeze()
+        a2 = IDX_N_TO_ACTION[a2_pred[-1].item()] if IDX_N_TO_ACTION[a2_pred[-1].item()] != 'SHIFT' else IDX_N_TO_ACTION[a2_pred[-2].item()] 
+        a3_pred = torch.argsort(pred3).squeeze()
+        a3 = IDX_R_TO_ACTION[a3_pred[-1].item()] if IDX_R_TO_ACTION[a3_pred[-1].item()] != 'SHIFT' else IDX_R_TO_ACTION[a3_pred[-2].item()] 
+        if IDX_S_TO_ACTION[torch.argmax(pred1).item()] == 'SHIFT':
             action = 'SHIFT'
             alter_action = '-'.join([a1, a2, a3])
         else:
@@ -126,18 +183,19 @@ class Neural(Model):
 
     def __init__(self, *args, **kwargs):
         self.net = Neural.Network(n_features=kwargs['n_features'],
-                                  hidden_size=128,
-                                  num_classes=len(ACTIONS))
+                                  hidden_size=kwargs['hidden_size'],
+                                  num_classes=kwargs['num_classes'])
         self.net.to(self.net.device)                                  
         self.criterion = nn.CrossEntropyLoss()
-        self.optimizer = torch.optim.Adam(self.net.parameters(), lr=0.01)
-        self.n_epochs = 50
+        self.optimizer = torch.optim.Adam(self.net.parameters(), weight_decay=1e-5, lr=1e-4)
+        self.n_epochs = kwargs['epochs']
+        self.batch_size = kwargs['batch_size']
 
     def train(self, x, y):
 
         train = TensorDataset(torch.tensor(x), torch.tensor(y))
         for epoch in range(self.n_epochs):
-            trainloader = DataLoader(train, batch_size=32, shuffle=True, num_workers=2)
+            trainloader = DataLoader(train, batch_size=self.batch_size, shuffle=True, num_workers=2)
 
             for _, data in enumerate(trainloader, 0):
                 inputs, labels = data

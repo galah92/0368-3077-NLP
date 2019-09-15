@@ -26,6 +26,16 @@ ACTIONS = ['REDUCE-' + nuc + '-' + relation
            for relation in RELATIONS
            for nuc in NUCLARITIES] + ['SHIFT']
 
+ACTIONS_S = ['REDUCE', 'SHIFT']
+ACTIONS_N = set([i.split('-')[1] for i in ACTIONS if i!= 'SHIFT'] + ['SHIFT'])
+ACTIONS_R = set([i.split('-')[2] for i in ACTIONS if i!= 'SHIFT'] + ['SHIFT'])
+
+ACTIONS_S_TO_IDX = {key: idx for idx, key in enumerate(ACTIONS_S)}
+IDX_S_TO_ACTION = {v:k for k,v in ACTIONS_S_TO_IDX.items()}
+ACTIONS_N_TO_IDX = {key: idx for idx, key in enumerate(ACTIONS_N)}
+IDX_N_TO_ACTION = {v:k for k,v in ACTIONS_N_TO_IDX.items()}
+ACTIONS_R_TO_IDX = {key: idx for idx, key in enumerate(ACTIONS_R)}
+IDX_R_TO_ACTION = {v:k for k,v in ACTIONS_R_TO_IDX.items()}
 
 def get_features(trees, samples, vocab, max_edus):
     # samples = samples[:150]  # debug

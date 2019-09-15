@@ -70,13 +70,13 @@ class TreeInfo():
         self.pos_tags = [['']]
 
 
-def load_trees(dis_dir, tree_list_dir=None):
+def load_trees(dis_dir, tree_gold_dir=None):
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
     nltk.download('punkt', quiet=True)
     nltk.download('averaged_perceptron_tagger', quiet=True)
 
-    if tree_list_dir is not None:
-        tree_list_dir.mkdir(exist_ok=True)
+    if tree_gold_dir is not None:
+        tree_gold_dir.mkdir(exist_ok=True)
 
     trees = []
     max_edus = 0
@@ -100,7 +100,8 @@ def load_trees(dis_dir, tree_list_dir=None):
         tree_dis_file = tree_file.with_suffix('.dis')
         if tree_dis_file.is_file():
             tree.root = binarize_file(tree_dis_file)
-            # tree.root.to_file(tree.filename)
+            if tree_gold_dir:
+                tree.root.to_file(tree_gold_dir / tree_file.with_suffix('').stem)
         trees.append(tree)
     return trees, max_edus
 

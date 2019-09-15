@@ -3,8 +3,8 @@ from trees import load_trees
 from samples import get_samples
 from rst_parser import parse_files
 from vocabulary import Vocabulary
-from features import get_features
-from models import SGD, SVM, RandomForest, MultiLabel, Neural, RNN, VoteModel
+from features import get_features, ACTIONS
+from models import SGD, SVM, RandomForest, MultiLabel, Neural, RNN, VoteModel, NeuralMultiLabel
 
 from pathlib import Path
 import argparse
@@ -23,6 +23,7 @@ MODELS = {
     'svm': SVM,
     'random_forest': RandomForest,
     'multilabel': MultiLabel,
+    'nn_multilabel': NeuralMultiLabel,
     'neural': Neural,
     'rnn': RNN,
     'vote': VoteModel
@@ -44,12 +45,16 @@ if __name__ == '__main__':
                                samples=samples,
                                sents_idx=sents_idx,
                                n_features=len(x_train[0]),
-                               models=[SGD, MultiLabel, RandomForest])
+                               models=[SGD, MultiLabel, RandomForest],
+                               num_classes=len(ACTIONS),
+                               hidden_size=256,
+                               batch_size=1024,
+                               epochs=100)
     model.train(x_train, y_train)
 
-    # print('evaluating')
-    # dev_trees = load_trees(DEV_TEST_DIR, DEV_TEST_GOLD_DIR)
-    # parse_files(model, dev_trees, vocab, DEV_TEST_DIR, PRED_OUTDIR)
-    # evaluate(DEV_TEST_GOLD_DIR, PRED_OUTDIR)
+    print('evaluating')
+    dev_trees, max_edus = load_trees(DEV_TEST_DIR, DEV_TEST_GOLD_DIR)
+    parse_files(model, dev_trees, max_edus, vocab, DEV_TEST_DIR, PRED_OUTDIR)
+    evaluate(DEV_TEST_GOLD_DIR, PRED_OUTDIR)
     test_trees, max_edus = load_trees(TEST_DIR)
     parse_files(model, test_trees, max_edus, vocab, TEST_DIR, TEST_PRED_DIR)
