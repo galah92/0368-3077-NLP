@@ -112,16 +112,22 @@ class NeuralMultiLabel(Model):
         kwargs['hidden_size'] = 128
         kwargs['batch_size'] = 1024
         kwargs['epochs'] = 11
+        kwargs['lr'] = 11
+        kwargs['w_decay'] = 11
         self.clf1 = Neural(*args, **kwargs)
         kwargs['num_classes'] = len(ACTIONS_N)
         kwargs['hidden_size'] = 256
         kwargs['batch_size'] = 1024
         kwargs['epochs'] = 11
+        kwargs['lr'] = 11
+        kwargs['w_decay'] = 11
         self.clf2 = Neural(*args, **kwargs)
         kwargs['num_classes'] = len(ACTIONS_R)
         kwargs['hidden_size'] = 256
         kwargs['batch_size'] = 1024
         kwargs['epochs'] = 11
+        kwargs['lr'] = 11
+        kwargs['w_decay'] = 11
         self.clf3 = Neural(*args, **kwargs)
 
 
@@ -187,7 +193,7 @@ class Neural(Model):
                                   num_classes=kwargs['num_classes'])
         self.net.to(self.net.device)                                  
         self.criterion = nn.CrossEntropyLoss()
-        self.optimizer = torch.optim.Adam(self.net.parameters(), weight_decay=1e-5, lr=1e-4)
+        self.optimizer = torch.optim.Adam(self.net.parameters(), weight_decay=kwargs['w_decay'], lr=kwargs['lr'])
         self.n_epochs = kwargs['epochs']
         self.batch_size = kwargs['batch_size']
 

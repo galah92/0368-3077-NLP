@@ -49,7 +49,9 @@ if __name__ == '__main__':
                                num_classes=len(ACTIONS),
                                hidden_size=256,
                                batch_size=1024,
-                               epochs=100)
+                               epochs=100,
+                               lr=1e-4,
+                               w_decay=1e-5)
     model.train(x_train, y_train)
 
     print('evaluating')
