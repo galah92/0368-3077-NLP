@@ -32,7 +32,7 @@ MODELS = {
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(prog=__package__)
-    parser.add_argument('--model', choices=MODELS.keys(), default='sgd')
+    parser.add_argument('--model', choices=MODELS.keys(), default='multilabel')
     args = parser.parse_args()
 
     print('preprocessing')
